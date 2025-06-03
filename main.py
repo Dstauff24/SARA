@@ -2,8 +2,14 @@ from flask import Flask, request, jsonify
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from pinecone import Pinecone
 import tiktoken
+from pinecone import Pinecone
+
+# Initialize Pinecone client
+pc = Pinecone(api_key=pinecone_api_key)
+
+# Get the actual index object
+index = pc.Index(pinecone_index)
 
 # Load environment variables
 load_dotenv()
