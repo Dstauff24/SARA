@@ -2,14 +2,9 @@ from flask import Flask, request, jsonify
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-import tiktoken
 from pinecone import Pinecone
-
-# Initialize Pinecone client
-pc = Pinecone(api_key=pinecone_api_key)
-
-# Get the actual index object
-index = pc.Index(pinecone_index)
+from typing import List
+import tiktoken
 
 # Load environment variables
 load_dotenv()
@@ -18,108 +13,106 @@ pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_env = os.getenv("PINECONE_ENV")
 pinecone_index_name = os.getenv("PINECONE_INDEX")
 
-# Initialize clients
+# Initialize services
 client = OpenAI(api_key=openai_api_key)
 pc = Pinecone(api_key=pinecone_api_key)
 index = pc.Index(pinecone_index_name)
 
-# Flask app
 app = Flask(__name__)
 
-# Short-term memory setup
+# Short-term memory store
 conversation_memory = {"history": []}
 MEMORY_LIMIT = 5
 
-# Count tokens
-def count_tokens(text):
-    encoding = tiktoken.encoding_for_model("gpt-4")
-    return len(encoding.encode(text))
+# --- Utility Functions ---
 
-# Detect seller intent
-def detect_intent(text):
-    text = text.lower()
-    if "lowball" in text or "too low" in text:
+def count_tokens(messages) -> int:
+    enc = tiktoken.encoding_for_model("gpt-4")
+    token_count = 0
+    for msg in messages:
+        token_count += 4  # base per-message overhead
+        token_count += len(enc.encode(msg["content"]))
+    return token_count
+
+def fetch_nepq_responses(seller_input: str, top_k: int = 3) -> List[str]:
+    try:
+        embedded = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=seller_input
+        ).data[0].embedding
+
+        pinecone_results = index.query(vector=embedded, top_k=top_k, include_metadata=True)
+        responses = [match['metadata']['response'] for match in pinecone_results['matches']]
+        return responses
+    except Exception as e:
+        print(f"Error fetching NEPQ responses: {e}")
+        return []
+
+# --- Seller Intent Tagging ---
+
+def detect_seller_intent(user_input: str) -> str:
+    lowered = user_input.lower()
+    if any(x in lowered for x in ["need to", "have to", "must sell", "urgent"]):
+        return "motivated"
+    elif any(x in lowered for x in ["just curious", "not sure", "maybe", "thinking"]):
+        return "not_ready"
+    elif any(x in lowered for x in ["price", "money", "offer", "worth"]):
         return "price_sensitive"
-    elif "makes sense" in text or "depends" in text:
-        return "open_to_offer"
-    elif "not selling" in text or "not interested" in text:
-        return "not_motivated"
-    elif "cash" in text or "quick close" in text:
-        return "motivated_cash"
-    elif "creative" in text or "terms" in text or "seller finance" in text:
-        return "creative_finance"
-    return "general"
+    elif any(x in lowered for x in ["agent", "realtor", "listed", "mls"]):
+        return "listed_or_considering"
+    else:
+        return "unknown"
 
-# Build system prompt based on seller tone
-def build_system_prompt(intent):
-    base = "You are SARA, a friendly and strategic real estate acquisitions expert. You speak like a human rep, using emotional intelligence, curiosity, and active listening."
-    if intent == "price_sensitive":
-        base += " The seller is price sensitive. Ask their ideal number and educate softly."
-    elif intent == "open_to_offer":
-        base += " The seller is cautiously curious. Explore their motivation and build trust."
-    elif intent == "not_motivated":
-        base += " The seller may be disinterested. Use curiosity to see if anything changed."
-    elif intent == "motivated_cash":
-        base += " The seller is motivated and open to cash. Emphasize speed and certainty."
-    elif intent == "creative_finance":
-        base += " The seller may be open to creative terms. Test gently with seller finance language."
-    return base
+# --- Routes ---
 
 @app.route("/")
-def index():
+def index_route():
     return "✅ SARA Webhook is running!"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.json
     seller_input = data.get("seller_input", "")
+
     if not seller_input:
         return jsonify({"error": "Missing seller_input"}), 400
 
-    # Store input
+    # Track memory
     conversation_memory["history"].append({"role": "user", "content": seller_input})
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
-    # Analyze tone and build dynamic system prompt
-    intent = detect_intent(seller_input)
-    system_prompt = build_system_prompt(intent)
+    # Seller intent
+    intent_tag = detect_seller_intent(seller_input)
 
-    # Embed seller input to retrieve NEPQ strategy
-    embedding = client.embeddings.create(
-        input=seller_input,
-        model="text-embedding-3-small"
-    )
-    vector = embedding.data[0].embedding
+    # System prompt
+    system_prompt = f"""You are SARA, a friendly and strategic real estate acquisitions expert.
+Use emotional intelligence, NEPQ questions, and conversational tone.
+Tag for seller intent: [{intent_tag}]. Respond thoughtfully and with empathy.
+"""
 
-    pinecone_results = index.query(
-        vector=vector,
-        top_k=3,
-        include_metadata=True
-    )
-
-    # Add retrieved NEPQ pairs
-    nepq_context = []
-    for match in pinecone_results.get("matches", []):
-        if "text" in match["metadata"]:
-            nepq_context.append({"role": "system", "content": f"(NEPQ Strategy) {match['metadata']['text']}"})
-
-    # Construct prompt
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(nepq_context)
     messages.extend(conversation_memory["history"])
 
+    # Pull relevant NEPQ training pair examples
+    nepq_responses = fetch_nepq_responses(seller_input)
+    for resp in nepq_responses:
+        messages.append({"role": "assistant", "content": resp})
+
+    # Ensure token limit safety
+    while count_tokens(messages) > 7000:
+        messages.pop(1)  # remove oldest user/assistant pair (after system)
+
     try:
-        completion = client.chat.completions.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=messages,
             temperature=0.6
         )
-        reply = completion.choices[0].message.content
+        reply = response.choices[0].message.content
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    # Store assistant response
     conversation_memory["history"].append({"role": "assistant", "content": reply})
     return jsonify({"content": reply})
 
