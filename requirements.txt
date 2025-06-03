@@ -2,3 +2,4 @@ flask
 openai
 pinecone
 python-dotenv
+tiktoken
