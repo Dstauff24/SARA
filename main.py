@@ -3,70 +3,92 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
-from typing import List
 import tiktoken
 
 # Load environment variables
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
-pinecone_env = os.getenv("PINECONE_ENV")
 pinecone_index_name = os.getenv("PINECONE_INDEX")
 
-# Initialize services
+# Initialize Flask app
+app = Flask(__name__)
+
+# Initialize OpenAI client
 client = OpenAI(api_key=openai_api_key)
+
+# Initialize Pinecone
 pc = Pinecone(api_key=pinecone_api_key)
 index = pc.Index(pinecone_index_name)
 
-app = Flask(__name__)
-
-# Short-term memory store
+# Short-term memory
 conversation_memory = {"history": []}
 MEMORY_LIMIT = 5
 
-# --- Utility Functions ---
-
-def count_tokens(messages) -> int:
+# Count tokens for message management
+def count_tokens(messages):
     enc = tiktoken.encoding_for_model("gpt-4")
-    token_count = 0
-    for msg in messages:
-        token_count += 4  # base per-message overhead
-        token_count += len(enc.encode(msg["content"]))
-    return token_count
+    return sum(len(enc.encode(msg["content"])) for msg in messages)
 
-def fetch_nepq_responses(seller_input: str, top_k: int = 3) -> List[str]:
+# Detect seller emotional tone
+def detect_seller_tone(seller_input):
+    prompt = f"""
+    Classify the emotional tone of the following seller message into one of the following categories:
+    Skeptical, Guarded, Defensive, Curious, Optimistic, Indecisive, Frustrated, Distracted, Confused, Motivated, Withdrawn, Open.
+
+    Seller Message: "{seller_input}"
+
+    Respond only with the category name.
+    """
     try:
-        embedded = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=seller_input
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print("Tone detection error:", e)
+        return "Neutral"
+
+# Adjust system prompt based on tone
+def get_system_prompt(tone):
+    styles = {
+        "Skeptical": "Be transparent and build trust without pressure.",
+        "Guarded": "Use gentle NEPQ questions and respect their boundaries.",
+        "Defensive": "Be empathetic, patient, and disarming.",
+        "Curious": "Be engaging and informative with NEPQ.",
+        "Optimistic": "Match their energy and support their enthusiasm.",
+        "Indecisive": "Ask clarifying questions to uncover their motives.",
+        "Frustrated": "Stay calm and help solve their core concern.",
+        "Distracted": "Be direct, simple, and keep attention focused.",
+        "Confused": "Use analogies and simple NEPQ phrasing to explain.",
+        "Motivated": "Show urgency and a strong understanding of their goals.",
+        "Withdrawn": "Be patient, light, and curious. Don’t pressure.",
+        "Open": "Lean in, ask discovery questions, and go deep with NEPQ."
+    }
+    return (
+        f"You are SARA, a warm and strategic real estate acquisitions expert. "
+        f"Use emotional intelligence, NEPQ methodology, and sound reasoning to move the deal forward. "
+        f"Seller tone: {tone}. {styles.get(tone, '')}"
+    )
+
+# Retrieve NEPQ training phrases from Pinecone
+def retrieve_nepq_pairs(query_text):
+    try:
+        embedding = client.embeddings.create(
+            model="text-embedding-ada-002",
+            input=[query_text]
         ).data[0].embedding
 
-        pinecone_results = index.query(vector=embedded, top_k=top_k, include_metadata=True)
-        responses = [match['metadata']['response'] for match in pinecone_results['matches']]
-        return responses
+        result = index.query(vector=embedding, top_k=3, include_metadata=True)
+        return [match["metadata"]["text"] for match in result["matches"]]
     except Exception as e:
-        print(f"Error fetching NEPQ responses: {e}")
+        print("Pinecone error:", e)
         return []
 
-# --- Seller Intent Tagging ---
-
-def detect_seller_intent(user_input: str) -> str:
-    lowered = user_input.lower()
-    if any(x in lowered for x in ["need to", "have to", "must sell", "urgent"]):
-        return "motivated"
-    elif any(x in lowered for x in ["just curious", "not sure", "maybe", "thinking"]):
-        return "not_ready"
-    elif any(x in lowered for x in ["price", "money", "offer", "worth"]):
-        return "price_sensitive"
-    elif any(x in lowered for x in ["agent", "realtor", "listed", "mls"]):
-        return "listed_or_considering"
-    else:
-        return "unknown"
-
-# --- Routes ---
-
 @app.route("/")
-def index_route():
+def index():
     return "✅ SARA Webhook is running!"
 
 @app.route("/webhook", methods=["POST"])
@@ -77,31 +99,30 @@ def webhook():
     if not seller_input:
         return jsonify({"error": "Missing seller_input"}), 400
 
-    # Track memory
+    # Add to memory
     conversation_memory["history"].append({"role": "user", "content": seller_input})
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
-    # Seller intent
-    intent_tag = detect_seller_intent(seller_input)
+    # Detect tone + get system prompt
+    seller_tone = detect_seller_tone(seller_input)
+    system_prompt = get_system_prompt(seller_tone)
 
-    # System prompt
-    system_prompt = f"""You are SARA, a friendly and strategic real estate acquisitions expert.
-Use emotional intelligence, NEPQ questions, and conversational tone.
-Tag for seller intent: [{intent_tag}]. Respond thoughtfully and with empathy.
-"""
+    # Retrieve NEPQ training pair suggestions
+    nepq_suggestions = retrieve_nepq_pairs(seller_input)
+    if nepq_suggestions:
+        conversation_memory["history"].append({
+            "role": "system",
+            "content": f"Use these NEPQ ideas in your approach: {', '.join(nepq_suggestions)}"
+        })
 
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(conversation_memory["history"])
+    # Build conversation
+    messages = [{"role": "system", "content": system_prompt}] + conversation_memory["history"]
 
-    # Pull relevant NEPQ training pair examples
-    nepq_responses = fetch_nepq_responses(seller_input)
-    for resp in nepq_responses:
-        messages.append({"role": "assistant", "content": resp})
-
-    # Ensure token limit safety
-    while count_tokens(messages) > 7000:
-        messages.pop(1)  # remove oldest user/assistant pair (after system)
+    # Trim if tokens are too high
+    while count_tokens(messages) > 4000:
+        conversation_memory["history"] = conversation_memory["history"][2:]
+        messages = [{"role": "system", "content": system_prompt}] + conversation_memory["history"]
 
     try:
         response = client.chat.completions.create(
@@ -117,4 +138,4 @@ Tag for seller intent: [{intent_tag}]. Respond thoughtfully and with empathy.
     return jsonify({"content": reply})
 
 if __name__ == "__main__":
-    app.run(debug=False, port=8080, host="0.0.0.0")
+    app.run(debug=False, host="0.0.0.0", port=8080)
