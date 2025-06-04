@@ -2,58 +2,48 @@ from flask import Flask, request, jsonify
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+from pinecone import Pinecone
 import tiktoken
-from pinecone import Pinecone, ServerlessSpec
-from pinecone import Index
-from openai import OpenAI
-from uuid import uuid4
 
 # Load environment variables
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
-pinecone_env = os.getenv("PINECONE_ENV")
-pinecone_index_name = os.getenv("PINECONE_INDEX")
+pinecone_index = os.getenv("PINECONE_INDEX")
 
 client = OpenAI(api_key=openai_api_key)
-
-# Initialize Pinecone
 pc = Pinecone(api_key=pinecone_api_key)
-index = pc.Index(pinecone_index_name)
+index = pc.Index(pinecone_index)
 
-# Flask app
 app = Flask(__name__)
 
-# In-memory memory
-conversation_memory = {
-    "history": []
-}
+# Short-Term Memory
+conversation_memory = {"history": []}
 MEMORY_LIMIT = 5
 
-# Tone detection keywords
+# Tone mapping
 tone_map = {
-    "angry": ["this is ridiculous", "i’m pissed", "you people", "frustrated"],
+    "angry": ["this is ridiculous", "pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
     "curious": ["i’m just wondering", "what would you offer", "can you explain"],
     "hesitant": ["i don’t know", "maybe", "thinking about it"],
     "urgent": ["need to sell fast", "asap", "foreclosure", "eviction"],
     "emotional": ["my mom passed", "divorce", "lost job", "hard time"],
     "motivated": ["ready to go", "want to sell", "just want out"],
-    "doubtful": ["no way that’s enough", "that’s too low", "i’ll never take that"],
+    "doubtful": ["no way", "that’s too low", "never take that"],
     "withdrawn": ["leave me alone", "stop calling", "not interested"],
     "neutral": [],
     "friendly": ["hey", "thanks for calling", "no worries"],
     "direct": ["how much", "what’s the offer", "let’s cut to it"]
 }
 
-def detect_tone(input_text):
-    lowered = input_text.lower()
+def detect_tone(text):
+    lowered = text.lower()
     for tone, keywords in tone_map.items():
         if any(keyword in lowered for keyword in keywords):
             return tone
     return "neutral"
 
-# Intent detection (simple keyword-based logic)
 def detect_seller_intent(text):
     text = text.lower()
     if any(kw in text for kw in ["how much", "offer", "price", "what would you give"]):
@@ -66,10 +56,30 @@ def detect_seller_intent(text):
         return "cold"
     elif any(kw in text for kw in ["vacant", "tenant", "rented", "investment"]):
         return "landlord"
-    else:
-        return "general_inquiry"
+    return "general_inquiry"
 
-# Token limiter
+# ROI-based Offer Logic
+def calculate_offer_logic(arv, repair_cost, wholesale_fee=10000, min_roi=0.15):
+    arv = float(arv)
+    repair_cost = float(repair_cost)
+    realtor_fees = arv * 0.06
+
+    for investor_price in range(1000000, 0, -1000):
+        holding_costs = investor_price * 0.01 * 3
+        cost_basis = investor_price + repair_cost
+        net_proceeds = arv - holding_costs - realtor_fees
+        profit = net_proceeds - cost_basis
+        roi = profit / cost_basis if cost_basis else 0
+
+        if roi >= min_roi:
+            return {
+                "max_buyer_price": investor_price,
+                "max_seller_offer": investor_price - wholesale_fee,
+                "roi_percent": round(roi * 100, 2)
+            }
+    return {}
+
+# Token counting logic
 def num_tokens_from_messages(messages, model="gpt-4"):
     encoding = tiktoken.encoding_for_model(model)
     tokens_per_message = 3
@@ -85,60 +95,53 @@ def num_tokens_from_messages(messages, model="gpt-4"):
     return num_tokens
 
 @app.route("/", methods=["GET"])
-def health_check():
+def index():
     return "✅ SARA Webhook is running!"
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
     seller_input = data.get("seller_input", "")
+    arv = data.get("arv")
+    repair_cost = data.get("repair_cost")
+
     if not seller_input:
         return jsonify({"error": "Missing seller_input"}), 400
 
-    # Detect tone and intent
-    seller_tone = detect_tone(seller_input)
-    seller_intent = detect_seller_intent(seller_input)
+    tone = detect_tone(seller_input)
+    intent = detect_seller_intent(seller_input)
 
-    # Append to memory
     conversation_memory["history"].append({"role": "user", "content": seller_input})
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
-    # Pinecone NEPQ retrieval
+    # Pinecone NEPQ Retrieval
     try:
-        query_response = index.query(
-            vector=client.embeddings.create(input=[seller_input], model="text-embedding-3-small").data[0].embedding,
-            top_k=3,
-            include_metadata=True
-        )
-        top_pairs = [match['metadata']['pair'] for match in query_response['matches']]
-    except Exception as e:
-        top_pairs = []
+        embed = client.embeddings.create(model="text-embedding-3-small", input=[seller_input])
+        vector = embed.data[0].embedding
+        result = index.query(vector=vector, top_k=1, include_metadata=True)
+        training_pair = result.matches[0].metadata["response"] if result.matches else ""
+    except:
+        training_pair = ""
 
-    # Mock reasoning (ARV/repair logic placeholder)
-    if seller_intent == "price_sensitive":
-        reasoning = "Just so you know, our offer will factor in repairs and what the home could resell for after updates. It’s not just a random number—we calculate ROI and resale risk too."
-    elif seller_intent == "distressed":
-        reasoning = "We’ve worked with sellers in tough spots before—foreclosure, liens, even tax defaults—and can move quickly with minimal hassle."
-    else:
-        reasoning = "Our process is tailored to your situation and goals. Let’s talk it through so you feel confident about what happens next."
+    # ROI Reasoning
+    reasoning = ""
+    if intent == "price_sensitive" and arv and repair_cost:
+        logic = calculate_offer_logic(arv, repair_cost)
+        if logic:
+            reasoning = f"Our cash offer factors in resale value, repairs, and investor ROI. Based on a $ARV of {arv} and ${repair_cost} in repairs, the investor would buy at around ${logic['max_buyer_price']}, which means your offer could land around ${logic['max_seller_offer']}."
 
-    # Construct system prompt
-    system_prompt = f"""
-You are SARA, an emotionally intelligent and strategic real estate acquisitions expert.
-Tone of the seller: {seller_tone}
-Intent: {seller_intent}
-Your reply should include emotional awareness, sales psychology, and the following NEPQ-style examples:
-{"; ".join(top_pairs) if top_pairs else "No retrieved pairs"}
-Also, speak like a human—not a chatbot—and gently include this reasoning if applicable:
-{reasoning}
-"""
-
-    # Final prompt stack
-    messages = [{"role": "system", "content": system_prompt}]
+    # Build Prompt
+    messages = [{"role": "system", "content": f"""
+You are SARA, a human-sounding, emotionally intelligent real estate acquisitions expert.
+Tone: {tone}
+Intent: {intent}
+If relevant, use this reasoning: {reasoning}
+"""}]
     messages.extend(conversation_memory["history"])
+    if training_pair:
+        messages.append({"role": "assistant", "content": training_pair})
 
-    # Trim based on token count
     while num_tokens_from_messages(messages) > 3000:
         messages.pop(1)
 
@@ -152,14 +155,12 @@ Also, speak like a human—not a chatbot—and gently include this reasoning if 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    # Store assistant reply
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
     return jsonify({
         "content": reply,
-        "tone": seller_tone,
-        "intent": seller_intent,
-        "nepq_examples": top_pairs,
+        "tone": tone,
+        "intent": intent,
         "reasoning": reasoning
     })
 
