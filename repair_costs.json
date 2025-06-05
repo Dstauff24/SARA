@@ -1,19 +1,308 @@
-{
-  "light": {
-    "cost_per_sqft": 20,
-    "description": "Basic paint, carpet, light touch-ups"
+[
+  {
+    "category": "General Interior Repairs",
+    "item": "Paint (interior walls + ceilings)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$1.50 \u2013 $3.50"
   },
-  "medium": {
-    "cost_per_sqft": 30,
-    "description": "New flooring, kitchen and bath updates"
+  {
+    "category": "General Interior Repairs",
+    "item": "Flooring (laminate/vinyl plank)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$2.00 \u2013 $5.00"
   },
-  "heavy": {
-    "cost_per_sqft": 50,
-    "description": "Major systems repair (roof, HVAC), layout changes"
+  {
+    "category": "General Interior Repairs",
+    "item": "Flooring (carpet)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$1.50 \u2013 $4.00"
   },
-  "full_gut": {
-    "cost_per_sqft": 70,
-    "description": "Complete interior rebuild down to studs"
+  {
+    "category": "General Interior Repairs",
+    "item": "Drywall repair/replacement",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$1.50 \u2013 $3.50"
   },
-  "buffer_percent": 10
-}
+  {
+    "category": "General Interior Repairs",
+    "item": "Baseboard/trim replacement",
+    "unit_type": "Per linear ft",
+    "cost_range_usd": "$2.00 \u2013 $4.00"
+  },
+  {
+    "category": "General Interior Repairs",
+    "item": "Doors (interior)",
+    "unit_type": "Per door",
+    "cost_range_usd": "$150 \u2013 $400"
+  },
+  {
+    "category": "General Interior Repairs",
+    "item": "Windows (vinyl double-pane)",
+    "unit_type": "Per window",
+    "cost_range_usd": "$400 \u2013 $800"
+  },
+  {
+    "category": "General Interior Repairs",
+    "item": "Light fixtures",
+    "unit_type": "Per fixture",
+    "cost_range_usd": "$75 \u2013 $250"
+  },
+  {
+    "category": "General Interior Repairs",
+    "item": "Electrical outlets/switches",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$75 \u2013 $125"
+  },
+  {
+    "category": "General Interior Repairs",
+    "item": "Drywall repair/replacement",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$1.50 \u2013 $3.50"
+  },
+  {
+    "category": "Kitchen Remodel",
+    "item": "Full kitchen remodel (mid-grade)",
+    "unit_type": "Per kitchen",
+    "cost_range_usd": "$15,000 \u2013 $30,000"
+  },
+  {
+    "category": "Kitchen Remodel",
+    "item": "Cabinets (pre-fab)",
+    "unit_type": "Per linear ft",
+    "cost_range_usd": "$150 \u2013 $400"
+  },
+  {
+    "category": "Kitchen Remodel",
+    "item": "Countertops (quartz/granite)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$50 \u2013 $100"
+  },
+  {
+    "category": "Kitchen Remodel",
+    "item": "Appliances (set)",
+    "unit_type": "Set",
+    "cost_range_usd": "$2,500 \u2013 $6,000"
+  },
+  {
+    "category": "Kitchen Remodel",
+    "item": "Sink + faucet installation",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$400 \u2013 $800"
+  },
+  {
+    "category": "Kitchen Remodel",
+    "item": "Backsplash tile",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$10 \u2013 $25"
+  },
+  {
+    "category": "Kitchen Remodel",
+    "item": "Flooring (tile/LVP)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$3.00 \u2013 $6.00"
+  },
+  {
+    "category": "Bathroom Remodel",
+    "item": "Full bathroom remodel (mid-grade)",
+    "unit_type": "Per bathroom",
+    "cost_range_usd": "$8,000 \u2013 $15,000"
+  },
+  {
+    "category": "Bathroom Remodel",
+    "item": "Tub/shower replacement",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$1,500 \u2013 $3,500"
+  },
+  {
+    "category": "Bathroom Remodel",
+    "item": "Vanity w/ sink & faucet",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$500 \u2013 $1,500"
+  },
+  {
+    "category": "Bathroom Remodel",
+    "item": "Toilet",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$200 \u2013 $500"
+  },
+  {
+    "category": "Bathroom Remodel",
+    "item": "Tile flooring",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$4.00 \u2013 $10.00"
+  },
+  {
+    "category": "Bathroom Remodel",
+    "item": "Light fixture",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$75 \u2013 $200"
+  },
+  {
+    "category": "Bathroom Remodel",
+    "item": "Exhaust fan",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$150 \u2013 $300"
+  },
+  {
+    "category": "Mechanical Systems",
+    "item": "HVAC (new system)",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$7,000 \u2013 $12,000"
+  },
+  {
+    "category": "Mechanical Systems",
+    "item": "Electrical panel upgrade",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$1,500 \u2013 $3,000"
+  },
+  {
+    "category": "Mechanical Systems",
+    "item": "Rewire entire house",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$4.00 \u2013 $8.00"
+  },
+  {
+    "category": "Mechanical Systems",
+    "item": "Plumbing re-pipe",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$4.00 \u2013 $6.00"
+  },
+  {
+    "category": "Mechanical Systems",
+    "item": "Water heater (tank)",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$800 \u2013 $1,500"
+  },
+  {
+    "category": "Mechanical Systems",
+    "item": "Water heater (tankless)",
+    "unit_type": "Per unit",
+    "cost_range_usd": "$1,500 \u2013 $2,500"
+  },
+  {
+    "category": "Exterior Repairs",
+    "item": "Roofing (asphalt shingles)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$3.50 \u2013 $6.50"
+  },
+  {
+    "category": "Exterior Repairs",
+    "item": "Siding (vinyl)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$4.00 \u2013 $7.00"
+  },
+  {
+    "category": "Exterior Repairs",
+    "item": "Paint (exterior)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$1.50 \u2013 $4.00"
+  },
+  {
+    "category": "Exterior Repairs",
+    "item": "Windows (replacement)",
+    "unit_type": "Per window",
+    "cost_range_usd": "$400 \u2013 $800"
+  },
+  {
+    "category": "Exterior Repairs",
+    "item": "Entry doors",
+    "unit_type": "Per door",
+    "cost_range_usd": "$500 \u2013 $1,200"
+  },
+  {
+    "category": "Exterior Repairs",
+    "item": "Garage door",
+    "unit_type": "Per door",
+    "cost_range_usd": "$1,000 \u2013 $2,000"
+  },
+  {
+    "category": "Exterior Repairs",
+    "item": "Gutters",
+    "unit_type": "Per linear ft",
+    "cost_range_usd": "$4.00 \u2013 $8.00"
+  },
+  {
+    "category": "Landscaping & Exterior",
+    "item": "Sod install",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$0.75 \u2013 $1.50"
+  },
+  {
+    "category": "Landscaping & Exterior",
+    "item": "Tree/shrub removal",
+    "unit_type": "Per tree/shrub",
+    "cost_range_usd": "$300 \u2013 $1,000"
+  },
+  {
+    "category": "Landscaping & Exterior",
+    "item": "Gravel driveway",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$1.50 \u2013 $3.00"
+  },
+  {
+    "category": "Landscaping & Exterior",
+    "item": "Concrete driveway",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$6.00 \u2013 $10.00"
+  },
+  {
+    "category": "Landscaping & Exterior",
+    "item": "Fence (wood)",
+    "unit_type": "Per linear ft",
+    "cost_range_usd": "$25 \u2013 $40"
+  },
+  {
+    "category": "Landscaping & Exterior",
+    "item": "Deck (wood, basic)",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$15 \u2013 $35"
+  },
+  {
+    "category": "Cleaning & Misc",
+    "item": "Trashout / debris removal",
+    "unit_type": "Per job",
+    "cost_range_usd": "$500 \u2013 $2,000"
+  },
+  {
+    "category": "Cleaning & Misc",
+    "item": "Deep cleaning",
+    "unit_type": "Per job",
+    "cost_range_usd": "$300 \u2013 $800"
+  },
+  {
+    "category": "Cleaning & Misc",
+    "item": "Pest control / termite treatment",
+    "unit_type": "Per treatment",
+    "cost_range_usd": "$300 \u2013 $1,200"
+  },
+  {
+    "category": "Cleaning & Misc",
+    "item": "Staging",
+    "unit_type": "Per job",
+    "cost_range_usd": "$1,500 \u2013 $4,000"
+  },
+  {
+    "category": "Cleaning & Misc",
+    "item": "Permits & inspections",
+    "unit_type": "Per job",
+    "cost_range_usd": "$500 \u2013 $2,000"
+  },
+  {
+    "category": "Rehab Level Totals",
+    "item": "Light Rehab",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$10 \u2013 $20"
+  },
+  {
+    "category": "Rehab Level Totals",
+    "item": "Medium Rehab",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$20 \u2013 $35"
+  },
+  {
+    "category": "Rehab Level Totals",
+    "item": "Heavy Rehab",
+    "unit_type": "Per sq ft",
+    "cost_range_usd": "$35 \u2013 $65+"
+  }
+]
