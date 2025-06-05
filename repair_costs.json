@@ -1,0 +1,19 @@
+{
+  "light": {
+    "cost_per_sqft": 20,
+    "description": "Basic paint, carpet, light touch-ups"
+  },
+  "medium": {
+    "cost_per_sqft": 30,
+    "description": "New flooring, kitchen and bath updates"
+  },
+  "heavy": {
+    "cost_per_sqft": 50,
+    "description": "Major systems repair (roof, HVAC), layout changes"
+  },
+  "full_gut": {
+    "cost_per_sqft": 70,
+    "description": "Complete interior rebuild down to studs"
+  },
+  "buffer_percent": 10
+}
