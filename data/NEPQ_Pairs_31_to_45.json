@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pair_31",
+    "category": "Control & Redirection",
+    "seller_statement": "Just tell me the number you\u2019re offering.",
+    "tone": "Direct",
+    "response": "Of course \u2014 I want to make sure the number makes sense for both of us, and that I\u2019ve got enough info to make a strong offer the first time. Let me ask you a couple quick things to make sure it\u2019s accurate.",
+    "follow_up_prompt": "Can I confirm the interior condition \u2014 are we talking cosmetic updates or more structural stuff?"
+  },
+  {
+    "id": "pair_32",
+    "category": "Resistance & Exit Strategy",
+    "seller_statement": "I\u2019m done talking. Don\u2019t bother calling again.",
+    "tone": "Withdrawn",
+    "response": "Understood \u2014 I don\u2019t want to bother you if it\u2019s not something you want to explore. Before I go, would it be alright if I left my info in case you change your mind later?",
+    "follow_up_prompt": "If things shift and you decide to revisit selling, would you be open to a conversation down the line?"
+  },
+  {
+    "id": "pair_33",
+    "category": "Opening & Rapport",
+    "seller_statement": "Hey! Yeah, I\u2019ve been meaning to call someone about this place.",
+    "tone": "Friendly",
+    "response": "Perfect timing then. I\u2019d love to learn more about it and see if we might be a fit to help. Can I ask you a couple questions about the house first?",
+    "follow_up_prompt": "What made you decide now is the right time to explore selling?"
+  },
+  {
+    "id": "pair_34",
+    "category": "Fence Sitters",
+    "seller_statement": "Well\u2026 I might sell, I\u2019m just not sure yet.",
+    "tone": "Hesitant",
+    "response": "Totally fair \u2014 this is a big decision. No pressure on my end, I just want to see if we might be a good fit. If not, no hard feelings.",
+    "follow_up_prompt": "What would need to happen for selling to make sense for you right now?"
+  },
+  {
+    "id": "pair_35",
+    "category": "High Intent Sellers",
+    "seller_statement": "I\u2019m ready to get rid of it. Just want a clean deal.",
+    "tone": "Motivated",
+    "response": "You\u2019re speaking my language. That\u2019s exactly how we operate \u2014 no games, no nickel-and-diming. Just a clear offer and a fast close.",
+    "follow_up_prompt": "Can we talk about timeline \u2014 what\u2019s your ideal move-out or closing window?"
+  },
+  {
+    "id": "pair_36",
+    "category": "Trust Objection",
+    "seller_statement": "I\u2019ve had bad experiences in the past with investors not following through.",
+    "tone": "Skeptical",
+    "response": "Totally fair \u2014 I hear that more often than you\u2019d think. Can I ask, was it that they made an offer and then backed out, or something else that rubbed you the wrong way?",
+    "follow_up_prompt": "Assuming we\u2019re fully transparent and follow through exactly how we lay things out, what would make you feel more comfortable moving forward with someone like us?"
+  },
+  {
+    "id": "pair_37",
+    "category": "Timeline Objection",
+    "seller_statement": "I\u2019m not sure when I\u2019ll be ready to sell.",
+    "tone": "Hesitant",
+    "response": "That\u2019s okay \u2014 there\u2019s no rush on my end unless it benefits you. Most people I talk to aren\u2019t 100% ready either, but they just want to explore options.",
+    "follow_up_prompt": "If you had to guess, are we talking more like a few weeks, a couple months, or is it more of a \u2018wait and see\u2019 situation?"
+  },
+  {
+    "id": "pair_38",
+    "category": "Price Objection",
+    "seller_statement": "That sounds too low for this house.",
+    "tone": "Doubtful",
+    "response": "I understand \u2014 and I\u2019d probably feel the same if I didn\u2019t know how these offers were built. Just out of curiosity, what number were you hoping to hear?",
+    "follow_up_prompt": "If I could walk you through how we arrived at our offer \u2014 comps, repairs, investor costs \u2014 would you at least be open to seeing the breakdown?"
+  },
+  {
+    "id": "pair_39",
+    "category": "Deflection / Dodging",
+    "seller_statement": "Just make me an offer \u2014 I don\u2019t need to answer all these questions.",
+    "tone": "Direct",
+    "response": "Totally get that \u2014 and I\u2019d love to. The only reason I ask is because the more I understand, the better I can tailor something that makes sense for you, not just a random lowball.",
+    "follow_up_prompt": "Is there a ballpark number that would feel like a win for you, assuming everything checks out?"
+  },
+  {
+    "id": "pair_40",
+    "category": "Misunderstanding of the Process",
+    "seller_statement": "I don\u2019t want to list it. I thought you were buying it directly.",
+    "tone": "Confused",
+    "response": "Absolutely \u2014 we\u2019re not agents, and we don\u2019t list anything. What we do is structure offers so it\u2019s fast, direct, and simple \u2014 no open houses, fees, or repairs needed.",
+    "follow_up_prompt": "Have you had experience listing a property before, or are you just trying to avoid that whole process altogether?"
+  },
+  {
+    "id": "pair_41",
+    "category": "Low Trust in Process",
+    "seller_statement": "This sounds too good to be true.",
+    "tone": "Skeptical",
+    "response": "Fair \u2014 I\u2019d probably say the same thing if I were in your shoes. There\u2019s definitely a lot of noise out there. That\u2019s why I like to just walk through how it works, no fluff.",
+    "follow_up_prompt": "Would it be helpful if I laid out step-by-step how this actually goes, so you can judge for yourself?"
+  },
+  {
+    "id": "pair_42",
+    "category": "Waiting on Something",
+    "seller_statement": "I\u2019m waiting to hear back from another company.",
+    "tone": "Neutral",
+    "response": "Got it \u2014 totally respect that. Are you just comparing options right now or is there a front-runner you\u2019re leaning toward?",
+    "follow_up_prompt": "If we were able to match or even beat what they\u2019re offering, would it make sense to move forward with us instead?"
+  },
+  {
+    "id": "pair_43",
+    "category": "Financing Delay",
+    "seller_statement": "I need to figure out where I\u2019m moving before I sell.",
+    "tone": "Hesitant",
+    "response": "Completely understandable \u2014 that\u2019s actually one of the most common things we help sellers work through. Selling and moving at the same time is stressful.",
+    "follow_up_prompt": "If we could work on your timeline and even allow some flexibility after closing, would that take some pressure off?"
+  },
+  {
+    "id": "pair_44",
+    "category": "Needs to Talk to Someone Else",
+    "seller_statement": "I need to talk to my spouse/family first.",
+    "tone": "Reserved",
+    "response": "Absolutely \u2014 I wouldn\u2019t expect you to make a big decision without looping them in. Most people do the same.",
+    "follow_up_prompt": "Would it be helpful if we hopped on a quick call with them together, or should I just follow up after you\u2019ve had that conversation?"
+  },
+  {
+    "id": "pair_45",
+    "category": "Wants Retail",
+    "seller_statement": "I\u2019m thinking of listing with an agent.",
+    "tone": "Logical",
+    "response": "That makes sense \u2014 if you\u2019re trying to squeeze every dollar out and don\u2019t mind the time and prep involved, listing can work well in the right market.",
+    "follow_up_prompt": "Can I ask what has you leaning that way \u2014 is it purely price, or something else that feels more comfortable about that route?"
+  }
+]

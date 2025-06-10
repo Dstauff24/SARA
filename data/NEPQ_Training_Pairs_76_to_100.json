@@ -1,0 +1,162 @@
+[
+  {
+    "id": "pair_76",
+    "seller_statement": "What happens if I sign and then change my mind?",
+    "tone": "Curious / Cautious",
+    "category": "Contract Anxiety / Exit Flexibility",
+    "response": "Fair question \u2014 you\u2019re never locked into anything prematurely. We use an agreement to formalize interest, but you\u2019re not handing over the keys that second. Everything is built to move at your comfort level.",
+    "follow_up_prompt": "Would it make you feel better if I walked through what happens at each step after signing, so there are no surprises?"
+  },
+  {
+    "id": "pair_77",
+    "seller_statement": "I\u2019m tired of all these investor calls. You\u2019re the fifth person today.",
+    "tone": "Frustrated / Defensive",
+    "category": "Saturation / Trust Rebuilding",
+    "response": "I hear that \u2014 and honestly, I don\u2019t blame you. A lot of people are just dialing for dollars. That\u2019s not what I\u2019m about. I take the time to listen and only move forward if it\u2019s a win-win.",
+    "follow_up_prompt": "If this call turned out to be different and actually helped you, would that surprise you?"
+  },
+  {
+    "id": "pair_78",
+    "seller_statement": "How do I know you\u2019re not a scam?",
+    "tone": "Suspicious",
+    "category": "Trust & Legitimacy",
+    "response": "Great question \u2014 and you should be cautious. We\u2019re real people, working real deals, and happy to back it up with references, reviews, or past closings in your area.",
+    "follow_up_prompt": "What would help you feel most comfortable \u2014 proof of funds, testimonials, or walking through our process step-by-step?"
+  },
+  {
+    "id": "pair_79",
+    "seller_statement": "Sure, make me an offer. Let\u2019s see how bad it is.",
+    "tone": "Passive-Aggressive",
+    "category": "Defensive Humor / Disarming",
+    "response": "Sounds like someone\u2019s made you a few insulting ones before \u2014 and I don\u2019t blame you for being skeptical. I\u2019m here to make a real offer, not play games.",
+    "follow_up_prompt": "Out of curiosity \u2014 what\u2019s the worst offer you\u2019ve gotten so far?"
+  },
+  {
+    "id": "pair_80",
+    "seller_statement": "I\u2019m sorry, I just don\u2019t think I can sell right now.",
+    "tone": "Apologetic / Resigned",
+    "category": "Backing Out / Soft Exit",
+    "response": "No need to apologize \u2014 timing is everything. I\u2019d rather you feel good about it than rush into something you\u2019re unsure of.",
+    "follow_up_prompt": "If you had a clearer plan or timeline, do you think you'd reconsider at some point down the line?"
+  },
+  {
+    "id": "pair_81",
+    "seller_statement": "I\u2019m going through probate \u2014 it\u2019s complicated.",
+    "tone": "Overwhelmed / Tired",
+    "category": "Probate / Legal Complexity",
+    "response": "I completely understand \u2014 probate can be a lot, especially when emotions and paperwork mix. We\u2019ve helped families in this exact spot without rushing anything.",
+    "follow_up_prompt": "Would it help if I shared how others handled this process while keeping their options open?"
+  },
+  {
+    "id": "pair_82",
+    "seller_statement": "This is part of a divorce \u2014 we\u2019re not on the same page yet.",
+    "tone": "Tense / Conflicted",
+    "category": "Divorce / Co-Owner Disagreement",
+    "response": "That\u2019s always tough \u2014 and I respect the sensitivity. We\u2019ve worked with similar situations where both sides needed space but still wanted to explore options.",
+    "follow_up_prompt": "Would it be helpful if I just gave you something to review and you two could talk when ready?"
+  },
+  {
+    "id": "pair_83",
+    "seller_statement": "The bank is threatening foreclosure soon.",
+    "tone": "Anxious / Urgent",
+    "category": "Foreclosure / Urgency",
+    "response": "Thanks for being upfront \u2014 that\u2019s a stressful spot to be in. We\u2019ve helped people in similar situations navigate this quickly and avoid worst-case outcomes.",
+    "follow_up_prompt": "Do you want to walk through what\u2019s possible before the bank takes further steps?"
+  },
+  {
+    "id": "pair_84",
+    "seller_statement": "I owe a lot in back taxes \u2014 not sure if I can even sell.",
+    "tone": "Hopeless / Resigned",
+    "category": "Tax Delinquency / Liens",
+    "response": "Totally fair concern \u2014 we\u2019ve helped sellers close deals even with tax liens. It\u2019s all about structuring the right way so everyone\u2019s protected.",
+    "follow_up_prompt": "Would you want us to pull a quick title check and see what\u2019s even possible, no pressure?"
+  },
+  {
+    "id": "pair_85",
+    "seller_statement": "Would you consider seller financing or lease option?",
+    "tone": "Exploratory / Open",
+    "category": "Creative Financing / Sophisticated Seller",
+    "response": "Absolutely \u2014 some of our buyers specialize in those exact strategies. It really depends on your goals and timing.",
+    "follow_up_prompt": "Would you be open to walking through a few creative options so we can tailor something that works?"
+  },
+  {
+    "id": "pair_86",
+    "seller_statement": "I\u2019ve had this listed before and it didn\u2019t sell.",
+    "tone": "Frustrated / Defeated",
+    "category": "Expired Listing / Previous Failures",
+    "response": "That\u2019s frustrating \u2014 especially when you\u2019ve already tried. A lot of people we help are in that exact same boat, and we just take a different route.",
+    "follow_up_prompt": "Do you know why it didn\u2019t sell last time \u2014 was it price, timing, or condition?"
+  },
+  {
+    "id": "pair_87",
+    "seller_statement": "I\u2019m just watching the market for now.",
+    "tone": "Detached / Analytical",
+    "category": "Market Watcher / Not Ready Yet",
+    "response": "Totally makes sense \u2014 it\u2019s smart to pay attention. The market shifts quickly though, so timing can make a big difference.",
+    "follow_up_prompt": "Would it help if I sent updates or comps once in a while so you can track it passively?"
+  },
+  {
+    "id": "pair_88",
+    "seller_statement": "My house is unique \u2014 I don\u2019t think you\u2019ll value it right.",
+    "tone": "Prideful / Cautious",
+    "category": "Unique Property / High Emotional Value",
+    "response": "That\u2019s fair \u2014 not every home fits in a standard box. I\u2019d love to understand what makes it special so I don\u2019t overlook anything important.",
+    "follow_up_prompt": "What\u2019s the #1 thing you\u2019d want a buyer to truly appreciate about it?"
+  },
+  {
+    "id": "pair_89",
+    "seller_statement": "Can you just send me something in writing?",
+    "tone": "Avoidant / Distrusting",
+    "category": "Avoiding Verbal Negotiation",
+    "response": "Happy to \u2014 I know not everyone likes negotiating over the phone. Just want to make sure I understand what matters to you before I put anything in writing.",
+    "follow_up_prompt": "Would you prefer email or text if I send you a breakdown?"
+  },
+  {
+    "id": "pair_90",
+    "seller_statement": "This is an inherited property and I\u2019m out of state.",
+    "tone": "Detached / Logistical",
+    "category": "Out-of-State Owner",
+    "response": "Thanks for sharing \u2014 we work with a lot of folks managing properties remotely. We can handle everything digitally or with a local rep if needed.",
+    "follow_up_prompt": "Would it make life easier if we handled this without you needing to travel?"
+  },
+  {
+    "id": "pair_91",
+    "seller_statement": "What\u2019s your best price, bottom line?",
+    "tone": "Direct / No-Nonsense",
+    "category": "Price Pressure / Direct Negotiator",
+    "response": "I respect that \u2014 you want the straight answer. Let me make sure I understand everything first so what I give you isn\u2019t just a guess or lowball.",
+    "follow_up_prompt": "If I come back with a firm and fair number, would you be ready to consider it seriously?"
+  },
+  {
+    "id": "pair_92",
+    "seller_statement": "This house has been in the family forever.",
+    "tone": "Sentimental / Proud",
+    "category": "Legacy Property",
+    "response": "That\u2019s meaningful \u2014 and not something I take lightly. I\u2019d never want this to feel like just a transaction to you.",
+    "follow_up_prompt": "What\u2019s most important to you in how it\u2019s handled or who ends up with it?"
+  },
+  {
+    "id": "pair_93",
+    "seller_statement": "You\u2019re probably just going to waste my time like the others.",
+    "tone": "Cynical / Burned Out",
+    "category": "Seller Burnout / High Skepticism",
+    "response": "You\u2019ve clearly been through the wringer \u2014 and I get it. I don\u2019t want to waste your time either. Let\u2019s just see if there\u2019s alignment and move forward only if it feels right.",
+    "follow_up_prompt": "Would you be open to just a 2-minute walkthrough of how we\u2019d approach this differently?"
+  },
+  {
+    "id": "pair_94",
+    "seller_statement": "What do you even do with the house after buying it?",
+    "tone": "Inquisitive / Unsure",
+    "category": "Transparency / Curiosity",
+    "response": "Good question \u2014 our network includes people who rent, flip, or even move in. It depends on the house and area. We\u2019re up front either way.",
+    "follow_up_prompt": "Would it help if I shared what\u2019s likely in your case based on our current buyers?"
+  },
+  {
+    "id": "pair_95",
+    "seller_statement": "I\u2019m just overwhelmed and don\u2019t even know where to start.",
+    "tone": "Overwhelmed / Exhausted",
+    "category": "Seller Overload",
+    "response": "You\u2019re not alone \u2014 this can be a lot, especially if there\u2019s other life stuff going on. My job is to make it easier, not add more pressure.",
+    "follow_up_prompt": "Would you want me to simplify the next 2\u20133 steps just so it feels manageable?"
+  }
+]

@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pair_46",
+    "category": "Delay / No Urgency",
+    "seller_statement": "I\u2019ll think about it and get back to you.",
+    "tone": "Dismissive",
+    "response": "Sure \u2014 and I respect that. Just so I\u2019m not following up endlessly and bugging you, what specifically are you needing time to consider?",
+    "follow_up_prompt": "If nothing changes in your situation over the next few days, would you still be open to revisiting this?"
+  },
+  {
+    "id": "pair_47",
+    "category": "Control Objection",
+    "seller_statement": "I don\u2019t want anyone walking through the house right now.",
+    "tone": "Guarded",
+    "response": "Totally fair \u2014 especially these days, privacy and peace of mind matter. We usually don\u2019t need any walk-throughs unless you\u2019re comfortable and we\u2019re already in escrow.",
+    "follow_up_prompt": "Is it mostly a timing thing, or just not wanting people in the house at all?"
+  },
+  {
+    "id": "pair_48",
+    "category": "Unclear Motivation",
+    "seller_statement": "I just want to see what you\u2019d offer.",
+    "tone": "Neutral",
+    "response": "Absolutely \u2014 and I\u2019d love to make something work if it\u2019s a fit. Usually, though, I can be more accurate if I know what kind of outcome you\u2019re looking for.",
+    "follow_up_prompt": "If you had a magic wand and could sell it the exact way you want, what would that look like?"
+  },
+  {
+    "id": "pair_49",
+    "category": "Wants to List Later",
+    "seller_statement": "I might list it later if this doesn\u2019t work.",
+    "tone": "Open but noncommittal",
+    "response": "Makes sense \u2014 you want to leave your options open, and that\u2019s smart. Listing can work well for some, but it\u2019s a different route with pros and cons.",
+    "follow_up_prompt": "Is your main goal to maximize price, or to sell quickly and without hassle?"
+  },
+  {
+    "id": "pair_50",
+    "category": "Wants Above Market",
+    "seller_statement": "My neighbor sold for more than that.",
+    "tone": "Defensive",
+    "response": "Yeah, I hear that a lot \u2014 and sometimes those sales can skew expectations a bit. Every property\u2019s different based on condition, updates, and buyer type.",
+    "follow_up_prompt": "Do you know if your neighbor\u2019s place had any recent upgrades or was it in top condition when it sold?"
+  },
+  {
+    "id": "pair_51",
+    "category": "Avoiding Commitment",
+    "seller_statement": "I\u2019m just gathering information right now.",
+    "tone": "Noncommittal",
+    "response": "Totally fine \u2014 I don\u2019t expect you to make a decision today. Most of the people I talk to are in that same place at first.",
+    "follow_up_prompt": "Is there anything specific you\u2019re hoping to understand better before making a decision?"
+  },
+  {
+    "id": "pair_52",
+    "category": "Needs More Info",
+    "seller_statement": "I just don\u2019t know enough about this process yet.",
+    "tone": "Cautious",
+    "response": "Makes sense \u2014 it\u2019s not something you deal with every day. That\u2019s exactly why we\u2019re here, to help walk you through it and simplify everything.",
+    "follow_up_prompt": "Would you like me to give you a quick overview now, or would it be better if I sent a summary and we talked after?"
+  },
+  {
+    "id": "pair_53",
+    "category": "Wants to Keep as Rental",
+    "seller_statement": "I might just keep it as a rental.",
+    "tone": "Evaluative",
+    "response": "That could be a good plan, especially if it\u2019s already bringing in some cash flow. Out of curiosity, are you dealing with any tenant headaches or maintenance issues?",
+    "follow_up_prompt": "If you were to sell, what would make it worth your while to let it go instead?"
+  },
+  {
+    "id": "pair_54",
+    "category": "Not Open to Cash Offer",
+    "seller_statement": "I\u2019m not selling for a lowball cash offer.",
+    "tone": "Assertive",
+    "response": "Totally get that \u2014 we\u2019re not here to insult anyone. Our cash offers are based on real numbers and only make sense if they work for both sides.",
+    "follow_up_prompt": "Are you open to at least seeing how it\u2019s calculated to compare, or are you leaning more toward retail at this point?"
+  },
+  {
+    "id": "pair_55",
+    "category": "Wants to Renovate Themselves",
+    "seller_statement": "I might just fix it up myself and sell it later.",
+    "tone": "Resolute",
+    "response": "That\u2019s one way to go, for sure \u2014 and in the right market, it can work out well. Do you already have a crew lined up or just exploring the idea for now?",
+    "follow_up_prompt": "If I could show you what you\u2019d walk away with now versus after repairs \u2014 without the hassle \u2014 would you be open to comparing?"
+  },
+  {
+    "id": "pair_56",
+    "category": "Wants to Inherit or Leave to Family",
+    "seller_statement": "I\u2019m planning to leave this property to my kids.",
+    "tone": "Sentimental",
+    "response": "Totally understandable \u2014 a lot of people want to pass something down. That\u2019s a really meaningful reason to hold onto it.",
+    "follow_up_prompt": "Are they planning to move in, or is it more of an investment for them down the road?"
+  },
+  {
+    "id": "pair_57",
+    "category": "Already Working with Another Buyer",
+    "seller_statement": "Someone else already made me an offer.",
+    "tone": "Skeptical",
+    "response": "Got it \u2014 and I\u2019m glad you\u2019re getting options. May I ask, how was the experience so far? Some buyers overpromise or vanish when it\u2019s time to close.",
+    "follow_up_prompt": "Do you mind sharing what they offered? That helps me see if I can do better or if you\u2019ve already got a great deal."
+  },
+  {
+    "id": "pair_58",
+    "category": "Has Realtor Advice",
+    "seller_statement": "My agent told me it\u2019s worth way more than that.",
+    "tone": "Defensive",
+    "response": "Totally fair \u2014 agents usually aim for top dollar, which makes sense in a retail setting. Our buyers look at it a little differently since they\u2019re factoring in costs, time, and risk.",
+    "follow_up_prompt": "Did your agent say how long it might take to sell at that price, or if repairs would be needed first?"
+  },
+  {
+    "id": "pair_59",
+    "category": "Doesn\u2019t Trust Process",
+    "seller_statement": "This sounds kind of shady. I\u2019ve never heard of selling like this.",
+    "tone": "Suspicious",
+    "response": "Totally fair \u2014 this isn\u2019t the traditional way, and most people feel unsure the first time they hear it. We\u2019re happy to walk through exactly how it works and show how we protect sellers throughout.",
+    "follow_up_prompt": "Would you feel more comfortable if I sent over past deals or reviews first?"
+  },
+  {
+    "id": "pair_60",
+    "category": "Wants to Move at Their Own Pace",
+    "seller_statement": "I\u2019m not in a rush \u2014 I\u2019ll wait for the right price.",
+    "tone": "Calm / Detached",
+    "response": "Makes sense \u2014 you\u2019ve got time on your side, and that\u2019s a good position to be in. Just curious, though, if something came along that made sense now, would you consider it?",
+    "follow_up_prompt": "Is your ideal price based more on what you need to walk away with or what you feel the property is worth?"
+  }
+]

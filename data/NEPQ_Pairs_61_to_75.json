@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pair_61",
+    "category": "Doesn\u2019t Want to Disclose Info",
+    "seller_statement": "Why do you need to know all this about the house?",
+    "tone": "Guarded",
+    "response": "Great question \u2014 I don\u2019t want to overstep. I only ask so I can give you the most accurate info and avoid wasting your time with a lowball or generic offer.",
+    "follow_up_prompt": "Would it help if I explained how that info affects the actual price we can offer?"
+  },
+  {
+    "id": "pair_62",
+    "category": "Not Emotionally Ready to Sell",
+    "seller_statement": "It\u2019s hard to think about letting go of it.",
+    "tone": "Emotional / Sentimental",
+    "response": "I hear you \u2014 it\u2019s more than just a house. There\u2019s history there, and these decisions aren\u2019t always just about money.",
+    "follow_up_prompt": "What\u2019s been holding you back the most \u2014 memories, uncertainty, or something else?"
+  },
+  {
+    "id": "pair_63",
+    "category": "Thinks Repairs Aren\u2019t That Bad",
+    "seller_statement": "It\u2019s not in bad shape \u2014 just needs a few things.",
+    "tone": "Defensive",
+    "response": "Got it \u2014 and honestly, many properties are like that. Sometimes even small fixes can add up for investors depending on what\u2019s expected in that market.",
+    "follow_up_prompt": "If I may \u2014 would you be open to walking me through what you think needs attention and I\u2019ll explain how we price it?"
+  },
+  {
+    "id": "pair_64",
+    "category": "Has Tenant in Place",
+    "seller_statement": "There\u2019s a tenant in there right now.",
+    "tone": "Neutral / Informative",
+    "response": "Thanks for the heads up \u2014 we actually work with tenant-occupied properties all the time. Just helps us plan the next steps better.",
+    "follow_up_prompt": "Are they on a lease, or month-to-month? And do they know you might be selling?"
+  },
+  {
+    "id": "pair_65",
+    "category": "Doesn\u2019t Want to Be Pressured",
+    "seller_statement": "I don\u2019t want to be pushed into anything.",
+    "tone": "Resistant",
+    "response": "Absolutely \u2014 and I\u2019d never want you to feel that way. I\u2019m here to give you real options, not push an agenda.",
+    "follow_up_prompt": "Would it feel better if I just gave you some info and followed up in a few days to see what you\u2019re thinking?"
+  },
+  {
+    "id": "pair_66",
+    "category": "Already Has Cash Offer",
+    "seller_statement": "I\u2019ve already gotten a cash offer from another investor.",
+    "tone": "Confident / Reserved",
+    "response": "That\u2019s good \u2014 you\u2019re taking action and getting options. Every buyer sees value a little differently though.",
+    "follow_up_prompt": "Did their offer come with conditions like inspections, delays, or anything that made you pause?"
+  },
+  {
+    "id": "pair_67",
+    "category": "Assumes You\u2019ll Offer Low",
+    "seller_statement": "You\u2019re probably just going to lowball me like the rest.",
+    "tone": "Defensive / Frustrated",
+    "response": "You wouldn\u2019t believe how many people tell me the same thing \u2014 and honestly, they have a point if someone didn\u2019t take time to understand the property.",
+    "follow_up_prompt": "Can I ask \u2014 what made the other offers feel like lowballs? Was it the number or how they explained it?"
+  },
+  {
+    "id": "pair_68",
+    "category": "Thinks They Can Do Better on MLS",
+    "seller_statement": "I\u2019ll just list it with a Realtor and get more.",
+    "tone": "Logical / Detached",
+    "response": "That\u2019s a valid route, and sometimes it is the right call depending on time, condition, and how much hassle you want to deal with.",
+    "follow_up_prompt": "If you listed it, would you be okay with it sitting a while or needing showings and repairs first?"
+  },
+  {
+    "id": "pair_69",
+    "category": "Untrusting of Investors",
+    "seller_statement": "I don\u2019t trust investors \u2014 you guys are just trying to take advantage.",
+    "tone": "Hostile / Wary",
+    "response": "I get that \u2014 some people in this industry haven\u2019t helped the reputation. All I can do is be upfront and let you decide if what I\u2019m offering feels right to you.",
+    "follow_up_prompt": "What kind of experience would help you feel more comfortable working with someone?"
+  },
+  {
+    "id": "pair_70",
+    "category": "Wants Full Market Value",
+    "seller_statement": "I want what the house is worth \u2014 not a discount.",
+    "tone": "Firm / Value-Oriented",
+    "response": "Makes sense \u2014 your property has value, and it\u2019s normal to want top dollar. The only difference is our buyers pay based on returns after repairs and holding costs.",
+    "follow_up_prompt": "If the offer reflected those repairs and costs clearly, would you still be open to hearing it?"
+  },
+  {
+    "id": "pair_71",
+    "category": "Emotional Tie to Property",
+    "seller_statement": "I\u2019ve lived here for 30 years. It\u2019s hard to let go.",
+    "tone": "Sentimental / Emotional",
+    "response": "That\u2019s a lifetime of memories \u2014 I respect that deeply. This kind of decision takes time and clarity.",
+    "follow_up_prompt": "If you did decide to move forward, what would make it feel like the right next chapter for you?"
+  },
+  {
+    "id": "pair_72",
+    "category": "Skeptical of Assignment Model",
+    "seller_statement": "So wait, you\u2019re just flipping this to someone else?",
+    "tone": "Curious / Suspicious",
+    "response": "We work with a network of buyers looking for homes like yours \u2014 some want to rent, some flip, some live in them. You get the benefit of a serious buyer without the usual delays or listings.",
+    "follow_up_prompt": "Is your main concern who\u2019s buying it, or just making sure it closes quickly and smoothly?"
+  },
+  {
+    "id": "pair_73",
+    "category": "Wants Offer Before Talking",
+    "seller_statement": "Just give me your offer upfront.",
+    "tone": "Transactional / Guarded",
+    "response": "I\u2019d love to \u2014 but if I don\u2019t understand your situation or the condition, it might be too low or totally off. I\u2019d rather be accurate than waste your time.",
+    "follow_up_prompt": "If it ends up being fair and makes sense for you, would that be something you\u2019d consider sooner rather than later?"
+  },
+  {
+    "id": "pair_74",
+    "category": "Believes Condition is \u201cFine\u201d",
+    "seller_statement": "The house is fine \u2014 it doesn\u2019t need much work.",
+    "tone": "Dismissive / Self-assured",
+    "response": "That\u2019s great to hear \u2014 a house in solid shape is always easier to work with. Even with clean homes, our buyers still budget for updates just to match market trends.",
+    "follow_up_prompt": "Are there any updates or systems you know might be a few years old or due for replacement soon?"
+  },
+  {
+    "id": "pair_75",
+    "category": "Wants to Think About It",
+    "seller_statement": "Let me think about it.",
+    "tone": "Hesitant / Avoidant",
+    "response": "Of course \u2014 I wouldn\u2019t expect a snap decision. Just so I understand, is there something specific you\u2019d like more info on or that gave you pause?",
+    "follow_up_prompt": "Would it help if I broke down the offer details again or gave you a side-by-side of what listing vs. selling direct looks like?"
+  }
+]

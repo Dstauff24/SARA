@@ -1,0 +1,130 @@
+[
+  {
+    "id": "pair_1",
+    "seller_statement": "Wait, so you\u2019re not actually buying our property?",
+    "tone": "skeptical",
+    "category": "Assignment Model / Trust Concern",
+    "response": "That\u2019s a totally fair question \u2014 and I appreciate you being direct about it. To clarify, I work closely with a few vetted local partners, and our goal is to make this process as smooth and certain for you as possible. The reason we operate this way is to ensure we match your property with the right type of buyer, based on what the home needs and your ideal timeline. But the best part is: you\u2019re not dealing with dozens of people or showings. Just me \u2014 all the way through.",
+    "follow_up_prompt": "Does that make sense, or would it help if I broke down how that works step by step?"
+  },
+  {
+    "id": "pair_2",
+    "seller_statement": "That offer is ridiculous \u2014 I\u2019d never take that.",
+    "tone": "angry",
+    "category": "Price Pushback",
+    "response": "I hear you \u2014 that reaction makes total sense. Most people feel the same way at first glance. Just to explain where that number\u2019s coming from: when we looked at similar homes that sold nearby, and factored in what this one might need in repairs or updates, that number is where a typical buyer would need to be to make the math work. That said \u2014 I\u2019m on your team here. Let me ask, what number were you hoping for?",
+    "follow_up_prompt": "If we could get closer to that, what would your ideal scenario look like from here?"
+  },
+  {
+    "id": "pair_3",
+    "seller_statement": "I\u2019m not really sure\u2026 I need to think about it.",
+    "tone": "hesitant",
+    "category": "Stalling / No Urgency",
+    "response": "Totally get it \u2014 this is a big decision, and you should feel 100% confident before making any moves. Just so I understand, is it more about the timing right now, or are there a few things you\u2019re unsure about that I can help clarify?",
+    "follow_up_prompt": "If we waited a few days and nothing changed, what would you want to be true in order to move forward?"
+  },
+  {
+    "id": "pair_4",
+    "seller_statement": "I\u2019m just getting a few offers \u2014 not sure if I\u2019m even going to sell.",
+    "tone": "neutral",
+    "category": "Not Serious / Testing Market",
+    "response": "That\u2019s fair \u2014 most folks want to see what options are out there before making a decision. I\u2019m happy to give you a ballpark based on the current market, and if it makes sense for you, we can go from there. If not, no hard feelings.",
+    "follow_up_prompt": "Out of curiosity, is there a number that would actually get your attention and make this feel real?"
+  },
+  {
+    "id": "pair_5",
+    "seller_statement": "You investors keep blowing up my phone.",
+    "tone": "frustrated",
+    "category": "Call Fatigue / Burnout",
+    "response": "You\u2019re not wrong \u2014 and I don\u2019t blame you one bit. That\u2019s got to be annoying. I\u2019ll keep this brief: I\u2019m not here to hassle you, just wanted to see if there\u2019s any scenario where it makes sense for us to make you a real offer and be done with it. If not, totally cool \u2014 I can take you off our list.",
+    "follow_up_prompt": "Has anyone actually given you a clear offer or explained how it all works?"
+  },
+  {
+    "id": "pair_6",
+    "seller_statement": "That price is way too low, I\u2019d never accept that.",
+    "tone": "doubtful",
+    "category": "Pricing Objections",
+    "response": "Totally fair, and to be honest I\u2019d probably feel the same way if I didn\u2019t understand how these offers are structured. Can I share how we got to that number based on what investors are actually paying in the area?",
+    "follow_up_prompt": "What were you realistically hoping to walk away with after everything?"
+  },
+  {
+    "id": "pair_7",
+    "seller_statement": "I know investors just lowball people and make money off us.",
+    "tone": "skeptical",
+    "category": "Pricing Objections",
+    "response": "You\u2019re not wrong \u2014 some do. And honestly, we don\u2019t win every deal. But when we do, it\u2019s usually because the seller values speed, simplicity, and certainty over maxing out every dollar. Does that sound like what you\u2019re looking for?",
+    "follow_up_prompt": "Outside of price, what else is important to you in how this plays out?"
+  },
+  {
+    "id": "pair_8",
+    "seller_statement": "How do you come up with your offer numbers anyway?",
+    "tone": "curious",
+    "category": "Pricing Objections",
+    "response": "Great question \u2014 it\u2019s based on what similar homes are actually selling for once they\u2019ve been fully renovated, minus the cost of fixing yours up and making sure there\u2019s a return left for the end buyer.",
+    "follow_up_prompt": "Would you be open to walking through a few of those examples together?"
+  },
+  {
+    "id": "pair_9",
+    "seller_statement": "I\u2019m not signing anything until I talk to my attorney.",
+    "tone": "direct",
+    "category": "Pushback",
+    "response": "Completely understand \u2014 I\u2019d want to run it by someone I trust too. Our agreement is non-binding until you\u2019ve had time to review and confirm everything. Would you want me to send it now so you have something to show them?",
+    "follow_up_prompt": "What questions do you think they\u2019ll want to clarify?"
+  },
+  {
+    "id": "pair_10",
+    "seller_statement": "I\u2019ve been burned before by investors, I don\u2019t want to go through that again.",
+    "tone": "emotional",
+    "category": "Pushback",
+    "response": "I\u2019m really sorry to hear that \u2014 no one should feel taken advantage of. Our goal is to create clarity, not pressure. Would it be helpful if I walked you through exactly how our process works from start to finish?",
+    "follow_up_prompt": "What would make you feel more comfortable moving forward this time?"
+  },
+  {
+    "id": "pair_11",
+    "seller_statement": "I don\u2019t think this is for me anymore.",
+    "tone": "withdrawn",
+    "category": "Pushback",
+    "response": "Got it. Just so I don\u2019t keep bothering you \u2014 was it the price, timing, or something else that made you feel that way?",
+    "follow_up_prompt": "If that changed in the future, would you want me to follow up or just leave it here?"
+  },
+  {
+    "id": "pair_12",
+    "seller_statement": "I might just fix it up myself and list it.",
+    "tone": "hesitant",
+    "category": "Motivation & Hesitation",
+    "response": "That could definitely work if you\u2019re up for the time and investment \u2014 flipping isn\u2019t easy. Can I ask what\u2019s making you consider that route now?",
+    "follow_up_prompt": "What do you think the total cost and timeline would look like for you?"
+  },
+  {
+    "id": "pair_13",
+    "seller_statement": "I just want this house gone already.",
+    "tone": "motivated",
+    "category": "Motivation & Hesitation",
+    "response": "Sounds like you\u2019re ready to be done with it \u2014 and we can absolutely help with that. If the numbers made sense, how soon would you want this off your hands?",
+    "follow_up_prompt": "What\u2019s been the biggest stress about holding onto it this long?"
+  },
+  {
+    "id": "pair_14",
+    "seller_statement": "It depends what the offer is.",
+    "tone": "on the fence",
+    "category": "Motivation & Hesitation",
+    "response": "Totally fair. Most sellers feel that way. What would make an offer worth your time today?",
+    "follow_up_prompt": "If we were in the right ballpark, would you want to move forward quickly or take more time to think it over?"
+  },
+  {
+    "id": "pair_15",
+    "seller_statement": "I\u2019m in foreclosure, I need this closed yesterday.",
+    "tone": "urgent",
+    "category": "Logistics / Time Concerns",
+    "response": "Thanks for being real with me. Let\u2019s not waste time \u2014 if we can agree on a number that makes sense, I\u2019ll escalate this and have the title team rush the process. Would that help?",
+    "follow_up_prompt": "How much time do you actually have before it\u2019s too late?"
+  },
+  {
+    "id": "pair_16",
+    "seller_statement": "I just wanted to see what you guys would offer, I\u2019m not in a rush.",
+    "tone": "friendly",
+    "category": "Logistics / Time Concerns",
+    "response": "Totally cool \u2014 I appreciate you being upfront. We\u2019re not going to push anything, just give you the info so you have options if something changes.",
+    "follow_up_prompt": "Would it help if I walked you through what the process would look like if you did decide to sell?"
+  }
+]

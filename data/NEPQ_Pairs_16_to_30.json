@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pair_16",
+    "category": "Price Objection",
+    "seller_statement": "That offer is way too low. I could get way more if I listed it.",
+    "tone": "Doubtful",
+    "response": "Totally understand where you\u2019re coming from \u2014 on the surface, listing can seem like the better option. But when you factor in time, agent fees, inspections, repairs, and buyer negotiations, the net usually isn\u2019t as high as expected. Our offer is built around netting you something clean and guaranteed \u2014 with no uncertainty.",
+    "follow_up_prompt": "If you didn\u2019t have to worry about showings or waiting months for the right buyer, would something more predictable be worth considering?"
+  },
+  {
+    "id": "pair_17",
+    "category": "Timeline / Urgency",
+    "seller_statement": "I\u2019m not in a rush, so I don\u2019t need to take a lowball offer.",
+    "tone": "Direct",
+    "response": "Makes total sense \u2014 if you\u2019ve got time, you\u2019ve got leverage. What we typically find though is that speed becomes more important when surprises pop up during a sale. Our goal is to give you certainty now and flexibility on closing if needed.",
+    "follow_up_prompt": "If we could offer something that gave you both a fair price and the ability to move on your timeline, would that be helpful?"
+  },
+  {
+    "id": "pair_18",
+    "category": "Process Confusion",
+    "seller_statement": "Wait, so you\u2019re not actually buying our property?",
+    "tone": "Skeptical",
+    "response": "Great question \u2014 I get why that might be confusing. What we do is partner with local investors who are actively looking for homes like yours. That lets us bring you a competitive offer, and our team manages the process from A to Z so you\u2019re not stuck doing the legwork.",
+    "follow_up_prompt": "Would it be helpful if I walked you through exactly how that process works from start to finish?"
+  },
+  {
+    "id": "pair_19",
+    "category": "Cold / Disengaged Seller",
+    "seller_statement": "Just give me a number or don\u2019t bother.",
+    "tone": "Direct / Cold",
+    "response": "Totally respect that \u2014 sounds like you\u2019ve had people waste your time before. I want to make sure the number I give actually makes sense based on what you\u2019re working with. Can I ask just 2 quick things about the property so I can avoid guessing?",
+    "follow_up_prompt": "Fair enough?"
+  },
+  {
+    "id": "pair_20",
+    "category": "Repairs Objection",
+    "seller_statement": "The house doesn\u2019t need that many repairs \u2014 I just replaced the floors.",
+    "tone": "Defensive",
+    "response": "Got it \u2014 that\u2019s actually a great start and new flooring is a strong selling point. What we do though is look at the full picture \u2014 things like the roof, HVAC, or kitchen layout that investors typically renovate regardless. Our goal isn\u2019t to nitpick, just to make sure we\u2019re not underestimating what\u2019s needed to hit the resale number.",
+    "follow_up_prompt": "Would it be okay if I walked through what investors typically upgrade even if some items are already newer?"
+  },
+  {
+    "id": "pair_21",
+    "category": "Low Motivation",
+    "seller_statement": "I don\u2019t really need to sell right now.",
+    "tone": "Indifferent",
+    "response": "I appreciate you being upfront \u2014 honestly, most people we talk to don\u2019t have to sell right away. What tends to happen though is life brings unexpected things that change that. We\u2019re here to be an option if and when it makes sense.",
+    "follow_up_prompt": "Out of curiosity, is there a number that would make it worth your time to move forward sooner rather than later?"
+  },
+  {
+    "id": "pair_22",
+    "category": "Agent Objection",
+    "seller_statement": "I\u2019ve already got a realtor I\u2019m talking to.",
+    "tone": "Neutral",
+    "response": "Totally understand \u2014 it\u2019s smart to weigh your options. What most people don\u2019t realize though is working with us is a completely different route. No showings, no open houses, no waiting. Just a clean, quick sale without fees.",
+    "follow_up_prompt": "Would it make sense to at least compare the two side by side before committing either way?"
+  },
+  {
+    "id": "pair_23",
+    "category": "Control / Skepticism",
+    "seller_statement": "Why do you need to know all this? Just make an offer.",
+    "tone": "Skeptical / Guarded",
+    "response": "Great question \u2014 I\u2019m not here to waste your time with a random guess. Most sellers actually lose out when someone throws out a number without understanding what they\u2019re working with. A few quick questions helps us make sure the offer we bring actually lines up with your expectations.",
+    "follow_up_prompt": "Is that fair?"
+  },
+  {
+    "id": "pair_24",
+    "category": "Cash Concerns",
+    "seller_statement": "I need cash, but I don\u2019t want to get ripped off.",
+    "tone": "Emotional",
+    "response": "Totally hear you \u2014 and honestly, that\u2019s the right mindset. Our job isn\u2019t to \u2018lowball\u2019 \u2014 it\u2019s to bring a number that works for both sides and remove the stress. We\u2019re super transparent, and you\u2019re in control the whole way.",
+    "follow_up_prompt": "Would it help if I walked you through exactly how our offer is built, and why it\u2019s structured that way?"
+  },
+  {
+    "id": "pair_25",
+    "category": "Competition Objection",
+    "seller_statement": "I\u2019m talking to a few other investors too.",
+    "tone": "Friendly but Firm",
+    "response": "That\u2019s smart \u2014 you should! Most sellers don\u2019t get multiple opinions and miss out. Just know, our offer isn\u2019t just about price \u2014 it\u2019s about certainty, speed, and how we make this painless for you.",
+    "follow_up_prompt": "Has anyone else walked you through what those offers are really going to net you after all costs?"
+  },
+  {
+    "id": "pair_26",
+    "category": "Distress Signals",
+    "seller_statement": "I\u2019m in pre-foreclosure and I need to sell fast.",
+    "tone": "Urgent",
+    "response": "I\u2019m really sorry you\u2019re in that situation. We\u2019ve helped others in similar spots, and the key here is speed and certainty. If we can verify some details today, we might be able to get things moving quickly for you.",
+    "follow_up_prompt": "What\u2019s your timeline right now \u2014 is the auction date already scheduled, or are you still early in the process?"
+  },
+  {
+    "id": "pair_27",
+    "category": "Objections & Negotiation",
+    "seller_statement": "I\u2019ve had other investors offer more than that.",
+    "tone": "Doubtful",
+    "response": "I hear you. Some investors throw out big numbers just to lock the deal in, and then they come back later to renegotiate or cancel altogether. We don\u2019t operate that way \u2014 we\u2019re upfront about what we can do, and once we agree, we stick to it.",
+    "follow_up_prompt": "Did any of those higher offers actually go through, or are you still weighing your options?"
+  },
+  {
+    "id": "pair_28",
+    "category": "Offer Explanation",
+    "seller_statement": "How do you even come up with the number you\u2019re offering?",
+    "tone": "Curious",
+    "response": "Good question \u2014 it\u2019s a combination of your property\u2019s condition, the market comps in the area, and what our end buyer would need to make it worth the risk. I can walk you through the logic if you\u2019d like.",
+    "follow_up_prompt": "Would it help if I explained how we look at comps and repair costs on our side?"
+  },
+  {
+    "id": "pair_29",
+    "category": "Trust & Credibility",
+    "seller_statement": "How do I know this isn\u2019t a scam?",
+    "tone": "Skeptical",
+    "response": "I completely understand \u2014 there are a lot of sketchy operators out there. What I can tell you is that we\u2019re fully transparent, we\u2019ll never ask you to sign anything you\u2019re not comfortable with, and we\u2019re happy to walk through everything step-by-step.",
+    "follow_up_prompt": "What kind of red flags are you looking out for, just so I can ease your mind?"
+  },
+  {
+    "id": "pair_30",
+    "category": "Emotional Anchors",
+    "seller_statement": "This used to be my mom\u2019s house, it\u2019s hard to even talk about selling it.",
+    "tone": "Emotional",
+    "response": "I\u2019m really sorry to hear that. That kind of decision is incredibly personal. Whatever we do, it\u2019ll be at your pace and with full respect for what this home meant to your family.",
+    "follow_up_prompt": "Are there any memories tied to this house you\u2019d want honored if it changes hands?"
+  }
+]
