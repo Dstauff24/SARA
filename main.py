@@ -4,8 +4,9 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
 import tiktoken
-from seller_memory_service import get_seller_memory, update_seller_memory
 from datetime import datetime
+from seller_memory_service import get_seller_memory, update_seller_memory
+from memory_summarizer import summarize_conversation, reduce_conversation_log
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +26,7 @@ app = Flask(__name__)
 conversation_memory = {
     "history": []
 }
-MEMORY_LIMIT = 5
+MEMORY_LIMIT = 8
 
 # Seller Tone Mapping
 tone_map = {
@@ -76,18 +77,6 @@ def detect_contradiction(seller_input, seller_data):
                 contradictions.append("condition_notes")
     return contradictions
 
-def generate_summary(user_messages):
-    summary_prompt = [
-        {"role": "system", "content": "Summarize the following conversation from a seller to highlight key points like motivation, condition, timeline, and pricing. Be concise and natural."},
-        {"role": "user", "content": "\n".join(user_messages)}
-    ]
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=summary_prompt,
-        temperature=0.5
-    )
-    return response.choices[0].message.content
-
 def num_tokens_from_messages(messages, model="gpt-4"):
     encoding = tiktoken.encoding_for_model(model)
     tokens_per_message = 3
@@ -125,8 +114,10 @@ def webhook():
     seller_data = get_seller_memory(phone_number)
 
     conversation_memory["history"].append({"role": "user", "content": seller_input})
+
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
-        conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
+        summary = summarize_conversation([msg["content"] for msg in conversation_memory["history"] if msg["role"] == "user"])
+        conversation_memory["history"] = reduce_conversation_log(conversation_memory["history"], summary, keep_turns=4)
 
     try:
         vector = client.embeddings.create(
@@ -152,13 +143,13 @@ def webhook():
         except:
             pass
 
-    call_summary = generate_summary([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
+    call_summary = summarize_conversation([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
     walkthrough_logic = """
 You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
-Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
+Use language like: \"Once we agree on terms, we’ll verify condition — nothing for you to worry about now.\"
 """
 
     system_prompt = f"""
@@ -240,6 +231,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
