@@ -3,3 +3,4 @@ openai
 pinecone
 python-dotenv
 tiktoken
+supabase
