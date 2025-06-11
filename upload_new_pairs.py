@@ -1,48 +1,47 @@
 import os
 import json
+from dotenv import load_dotenv
 from openai import OpenAI
 from pinecone import Pinecone
-from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# Setup keys and clients
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
-PINECONE_ENV = os.getenv("PINECONE_ENV")
-PINECONE_INDEX = os.getenv("PINECONE_INDEX_NAME")
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX")
 
-# Initialize OpenAI client
-openai = OpenAI(api_key=OPENAI_API_KEY)
-
-# Initialize Pinecone
+client = OpenAI(api_key=OPENAI_API_KEY)
 pc = Pinecone(api_key=PINECONE_API_KEY)
-index = pc.Index(PINECONE_INDEX)
+index = pc.Index(PINECONE_INDEX_NAME)
 
-# Target JSON files
-json_paths = [
-    "./data/NEPQ_Pairs_97_to_111_Part1.json",
-    "./data/NEPQ_Pairs_112_to_126_Part2.json"
+# Define files to load
+json_files = [
+    "data/NEPQ_Pairs_97_to_111_Part1.json",
+    "data/NEPQ_Pairs_112_to_126_Part2.json"
 ]
 
 # Embedding function
 def get_embedding(text, model="text-embedding-3-small"):
     text = text.replace("\n", " ")
-    response = openai.embeddings.create(input=[text], model=model)
+    response = client.embeddings.create(
+        model=model,
+        input=[text]
+    )
     return response.data[0].embedding
 
-# Upload each JSON file
-for json_path in json_paths:
-    with open(json_path, "r") as f:
-        training_pairs = json.load(f)
+# Upload logic
+for file_path in json_files:
+    with open(file_path, "r") as f:
+        training_data = json.load(f)
 
     vectors = []
-    for pair in training_pairs:
-        seller_statement = pair["seller_statement"]
-        vector = get_embedding(seller_statement)
+    for pair in training_data:
+        embedding = get_embedding(pair["seller_statement"])
         vectors.append({
             "id": pair["id"],
-            "values": vector,
+            "values": embedding,
             "metadata": {
                 "tone": pair["tone"],
                 "category": pair["category"],
@@ -51,7 +50,7 @@ for json_path in json_paths:
             }
         })
 
-    # Upsert to Pinecone
     index.upsert(vectors=vectors)
+    print(f"✅ Uploaded {len(vectors)} vectors from {file_path}")
 
-print("Upload complete.")
+print("🎉 All selected NEPQ pairs uploaded successfully.")
