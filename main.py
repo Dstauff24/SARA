@@ -6,8 +6,6 @@ from pinecone import Pinecone
 import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
 from datetime import datetime
-import json
-import re
 
 # Load environment variables
 load_dotenv()
@@ -22,6 +20,12 @@ index = pc.Index(pinecone_index_name)
 
 # Flask App
 app = Flask(__name__)
+
+# Short-Term Memory
+conversation_memory = {
+    "history": []
+}
+MEMORY_LIMIT = 5
 
 # Seller Tone Mapping
 tone_map = {
@@ -61,6 +65,29 @@ def detect_seller_intent(text):
     else:
         return "general_inquiry"
 
+def detect_contradiction(seller_input, seller_data):
+    contradictions = []
+    if seller_data:
+        if seller_data.get("asking_price") and str(seller_data["asking_price"]) not in seller_input:
+            if any(word in seller_input for word in ["price", "$", "want", "need"]):
+                contradictions.append("asking_price")
+        if seller_data.get("condition_notes") and "roof" in seller_data["condition_notes"].lower():
+            if "roof is fine" in seller_input.lower() or "no issues" in seller_input.lower():
+                contradictions.append("condition_notes")
+    return contradictions
+
+def generate_summary(user_messages):
+    summary_prompt = [
+        {"role": "system", "content": "Summarize the following conversation from a seller to highlight key points like motivation, condition, timeline, and pricing. Be concise and natural."},
+        {"role": "user", "content": "\n".join(user_messages)}
+    ]
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=summary_prompt,
+        temperature=0.5
+    )
+    return response.choices[0].message.content
+
 def num_tokens_from_messages(messages, model="gpt-4"):
     encoding = tiktoken.encoding_for_model(model)
     tokens_per_message = 3
@@ -82,29 +109,6 @@ def calculate_investor_price(arv, repair_cost, target_roi):
     max_price = arv - (realtor_fees + holding_costs + repair_cost + investor_profit)
     return round(max_price, 2)
 
-def extract_offer_amount(text):
-    match = re.search(r"\\$([0-9]{2,6}(?:,[0-9]{3})*(?:\\.[0-9]{2})?)", text)
-    if match:
-        return float(match.group(1).replace(',', ''))
-    return None
-
-def generate_summary(memory):
-    summary = []
-    for message in memory[-10:]:
-        if message["role"] == "user" and any(x in message["content"].lower() for x in ["need", "sell", "roof", "foreclosure", "price", "offer"]):
-            summary.append(message["content"])
-    return " | ".join(summary[:3])
-
-def detect_contradiction(current_input, previous_data):
-    contradictions = []
-    lowered = current_input.lower()
-    if previous_data:
-        if previous_data.get("asking_price") and str(int(previous_data["asking_price"])) not in lowered and "price" in lowered:
-            contradictions.append("asking price")
-        if previous_data.get("repair_cost") and any(x in lowered for x in ["great shape", "move-in ready"]) and int(previous_data.get("repair_cost", 0)) > 10000:
-            contradictions.append("repair condition")
-    return contradictions
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
@@ -114,21 +118,15 @@ def webhook():
     phone_number = data.get("phone_number")
 
     if not seller_input or not phone_number:
-        return jsonify({"error": "Missing seller_input or phone_number"}), 400
-
-    # Step 1: Load long-term memory from Supabase
-    seller_data = get_seller_memory(phone_number)
-    previous_log = seller_data.get("conversation_log", []) if seller_data else []
-    offer_history = seller_data.get("offer_history", []) if seller_data else []
-    call_summary = seller_data.get("call_summary", "") if seller_data else ""
-
-    # Build updated memory log
-    memory_stack = previous_log + [{"role": "user", "content": seller_input}]
+        return jsonify({"error": "Missing required fields"}), 400
 
     seller_tone = detect_tone(seller_input)
     seller_intent = detect_seller_intent(seller_input)
-    contradictions = detect_contradiction(seller_input, seller_data)
-    contradiction_note = f"Note: This may contradict previous details about {', '.join(contradictions)}. Consider clarifying." if contradictions else ""
+    seller_data = get_seller_memory(phone_number)
+
+    conversation_memory["history"].append({"role": "user", "content": seller_input})
+    if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
+        conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
     try:
         vector = client.embeddings.create(
@@ -142,42 +140,35 @@ def webhook():
         top_pairs = []
 
     investor_offer = ""
+    offer_amount = None
     if arv and repair_cost:
         try:
             arv = float(arv)
             repair_cost = float(repair_cost)
             initial_offer = calculate_investor_price(arv, repair_cost, 0.30)
             min_offer = calculate_investor_price(arv, repair_cost, 0.15)
-            max_offer = min_offer + 10000
-
-            investor_offer = f"""
-SARA will start the negotiation at ${initial_offer} and can go up to around ${min_offer}.
-She will not tell the seller this max but use seller tone to negotiate toward it.
-The backend investor must also account for repairs, holding costs, taxes, agent fees, and still make a return.
-Even if the seller gives a good price, SARA will still counter slightly (e.g. 2%) to preserve negotiation flow.
-"""
+            investor_offer = f"Start at ${initial_offer}, negotiate up to ${min_offer}."
+            offer_amount = initial_offer
         except:
-            investor_offer = ""
+            pass
+
+    call_summary = generate_summary([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
+    contradictions = detect_contradiction(seller_input, seller_data)
+    contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
     walkthrough_logic = """
-You are a virtual wholesaling assistant. You should NOT suggest scheduling an in-person walkthrough unless:
-- The seller explicitly asks about meeting or showing the home, OR
-- The conversation is far enough along that you've agreed on a price or are in final contract steps.
-
-Instead, say something like:
-"As part of our process, once we come to terms, we’ll have someone swing by later just to verify condition during the due diligence period — nothing for you to worry about right now."
-
-Avoid sounding pushy or rushing the walkthrough — your goal is to make the seller feel comfortable and in control.
+You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
+Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
 """
 
     system_prompt = f"""
+{contradiction_note}
+Previous Summary:
+{call_summary}
+
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
 Seller Intent: {seller_intent}
-
-Previous Call Summary: {call_summary}
-{contradiction_note}
-
 Negotiation Instructions:
 {investor_offer}
 
@@ -187,14 +178,12 @@ Walkthrough Guidance:
 Embed the following NEPQ-style examples into your natural conversation:
 {"; ".join(top_pairs) if top_pairs else "No NEPQ matches returned."}
 
-DO NOT mention any ROI %. DO mention that the buyer faces real costs (repairs, holding time, agent fees, etc.).
-Make sure the offer presented is based on our starting point (30% ROI) and dynamically adjust based on seller tone.
-Limit yourself to 3 total counteroffers.
-Always sound like a human. Be calm, strategic, and natural.
+Avoid talking about ROI %. Frame our position in terms of real costs and risk.
+Max 3 total counteroffers. Sound human, strategic, and calm.
 """
 
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(memory_stack)
+    messages.extend(conversation_memory["history"])
 
     while num_tokens_from_messages(messages) > 3000:
         messages.pop(1)
@@ -209,31 +198,37 @@ Always sound like a human. Be calm, strategic, and natural.
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    memory_stack.append({"role": "assistant", "content": reply})
+    conversation_memory["history"].append({"role": "assistant", "content": reply})
 
-    # Extract and append offer to history
-    offer_amount = extract_offer_amount(reply)
-    if offer_amount:
-        offer_history.append({"amount": offer_amount, "date": datetime.utcnow().isoformat()})
-
-    # Save everything to Supabase
-    update_seller_memory(phone_number, {
-        "conversation_log": memory_stack,
-        "disposition_status": "follow-up",
-        "last_updated": datetime.utcnow().isoformat(),
+    update_payload = {
+        "conversation_log": conversation_memory["history"],
+        "call_summary": call_summary,
+        "asking_price": data.get("asking_price"),
+        "repair_cost": data.get("repair_cost"),
+        "estimated_arv": data.get("arv"),
         "last_offer_amount": offer_amount,
-        "offer_history": offer_history,
-        "call_summary": generate_summary(memory_stack),
-        "asking_price": arv,
-        "repair_cost": repair_cost
-    })
+        "follow_up_date": data.get("follow_up_date"),
+        "follow_up_reason": data.get("follow_up_reason"),
+        "follow_up_set_by": data.get("follow_up_set_by"),
+        "phone_number": phone_number
+    }
+
+    if seller_data:
+        offer_history = seller_data.get("offer_history", [])
+        if offer_amount:
+            offer_history.append({"amount": offer_amount, "timestamp": datetime.utcnow().isoformat()})
+            update_payload["offer_history"] = offer_history
+
+    update_seller_memory(phone_number, update_payload)
 
     return jsonify({
         "content": reply,
         "tone": seller_tone,
         "intent": seller_intent,
+        "summary": call_summary,
         "nepq_examples": top_pairs,
-        "reasoning": investor_offer
+        "reasoning": investor_offer,
+        "contradictions": contradictions
     })
 
 @app.route("/", methods=["GET"])
@@ -242,6 +237,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
