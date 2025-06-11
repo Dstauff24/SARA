@@ -1,42 +1,53 @@
 # memory_summarizer.py
 
+from datetime import datetime
 from openai import OpenAI
+import tiktoken
+import os
 
-# Assumes OpenAI key is already loaded via environment
-client = OpenAI()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def summarize_conversation(messages: list[str]) -> str:
+MEMORY_SUMMARY_THRESHOLD = 6  # Number of messages before summarizing
+RECENT_TURNS_TO_KEEP = 4      # Number of turns to retain after summarizing
+
+def summarize_and_trim_memory(memory: list, summary_history: list):
     """
-    Summarize a list of seller messages into a concise recap that captures:
-    - Motivation
-    - Timeline
-    - Price expectations
-    - Property condition
+    Summarizes older messages and returns a cleaned conversation + updated summary history.
     """
-    prompt = [
-        {"role": "system", "content": "Summarize the following seller messages for internal use by an acquisitions rep. Capture motivation, timeline, condition, and pricing if mentioned."},
-        {"role": "user", "content": "\n".join(messages)}
+    if len(memory) < MEMORY_SUMMARY_THRESHOLD:
+        return memory, summary_history
+
+    # Extract old user messages only
+    user_messages = [m["content"] for m in memory if m["role"] == "user"][:-RECENT_TURNS_TO_KEEP]
+
+    summary_prompt = [
+        {"role": "system", "content": "Summarize this conversation for a real estate lead: focus on price, condition, motivation, and timeline."},
+        {"role": "user", "content": "\n".join(user_messages)}
     ]
+
     try:
         response = client.chat.completions.create(
             model="gpt-4",
-            messages=prompt,
-            temperature=0.5
+            messages=summary_prompt,
+            temperature=0.3
         )
-        return response.choices[0].message.content
+        summary_text = response.choices[0].message.content
     except Exception as e:
-        return f"[Error generating summary: {e}]"
+        summary_text = f"Auto-summary failed: {str(e)}"
 
-def reduce_conversation_log(full_log: list[dict], summary: str, keep_turns: int = 4) -> list[dict]:
-    """
-    Reduces the conversation memory to a summarized version.
-    - Keeps the last `keep_turns` user/assistant messages
-    - Prepends the generated summary as a system message
-    """
-    if not full_log:
-        return [{"role": "system", "content": f"Conversation Summary: {summary}"}]
+    summary_entry = {
+        "summary": summary_text,
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
-    trimmed_log = full_log[-(keep_turns * 2):]  # Approx. 4 user/assistant turns
-    summary_entry = {"role": "system", "content": f"Conversation Summary: {summary}"}
-    return [summary_entry] + trimmed_log
+    # Trim and inject summary into memory
+    trimmed_memory = memory[-RECENT_TURNS_TO_KEEP:]
+    trimmed_memory.insert(0, {"role": "system", "content": f"Previous Summary:\n{summary_text}"})
+
+    # Update summary history
+    updated_summary_history = summary_history or []
+    updated_summary_history.append(summary_entry)
+
+    return trimmed_memory, updated_summary_history
+
 
