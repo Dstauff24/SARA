@@ -43,7 +43,8 @@ def get_seller_memory(phone_number: str):
                 "bathrooms": seller.get("bathrooms"),
                 "square_footage": seller.get("square_footage"),
                 "year_built": seller.get("year_built"),
-                "lead_source": seller.get("lead_source")
+                "lead_source": seller.get("lead_source"),
+                "summary_history": seller.get("summary_history", [])
             }
         return None
     except Exception as e:
@@ -60,6 +61,10 @@ def update_seller_memory(phone_number: str, updates: dict):
         if "conversation_log" in updates and isinstance(updates["conversation_log"], list):
             updates["conversation_log"] = json.dumps(updates["conversation_log"])
 
+        # Convert summary_history to JSON string if necessary
+        if "summary_history" in updates and isinstance(updates["summary_history"], list):
+            updates["summary_history"] = json.dumps(updates["summary_history"])
+
         # Always update the last_updated timestamp
         updates["last_updated"] = datetime.utcnow().isoformat()
 
@@ -72,5 +77,6 @@ def update_seller_memory(phone_number: str, updates: dict):
     except Exception as e:
         print(f"[Supabase Error] Failed to update seller memory: {e}")
         return None
+
 
 
