@@ -116,13 +116,14 @@ def webhook():
     if not seller_input or not phone_number:
         return jsonify({"error": "Missing seller_input or phone_number"}), 400
 
-    # Load long-term memory from Supabase
+    # Step 1: Load long-term memory from Supabase
     seller_data = get_seller_memory(phone_number)
-    long_term_memory = seller_data.get("conversation_log", []) if seller_data else []
+    previous_log = seller_data.get("conversation_log", []) if seller_data else []
+    offer_history = seller_data.get("offer_history", []) if seller_data else []
     call_summary = seller_data.get("call_summary", "") if seller_data else ""
 
-    # Append the current user message
-    long_term_memory.append({"role": "user", "content": seller_input})
+    # Build updated memory log
+    memory_stack = previous_log + [{"role": "user", "content": seller_input}]
 
     seller_tone = detect_tone(seller_input)
     seller_intent = detect_seller_intent(seller_input)
@@ -193,7 +194,7 @@ Always sound like a human. Be calm, strategic, and natural.
 """
 
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(long_term_memory)
+    messages.extend(memory_stack)
 
     while num_tokens_from_messages(messages) > 3000:
         messages.pop(1)
@@ -208,30 +209,23 @@ Always sound like a human. Be calm, strategic, and natural.
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    # Append assistant reply
-    long_term_memory.append({"role": "assistant", "content": reply})
+    memory_stack.append({"role": "assistant", "content": reply})
 
-    # Extract offer and update offer history
+    # Extract and append offer to history
     offer_amount = extract_offer_amount(reply)
-    offer_entry = None
     if offer_amount:
-        offer_entry = {
-            "amount": offer_amount,
-            "date": datetime.utcnow().isoformat()
-        }
+        offer_history.append({"amount": offer_amount, "date": datetime.utcnow().isoformat()})
 
-    existing_history = seller_data.get("offer_history", []) if seller_data else []
-    if offer_entry:
-        existing_history.append(offer_entry)
-
-    # Save updated memory back to Supabase
+    # Save everything to Supabase
     update_seller_memory(phone_number, {
-        "conversation_log": long_term_memory,
+        "conversation_log": memory_stack,
         "disposition_status": "follow-up",
         "last_updated": datetime.utcnow().isoformat(),
         "last_offer_amount": offer_amount,
-        "offer_history": existing_history,
-        "call_summary": generate_summary(long_term_memory)
+        "offer_history": offer_history,
+        "call_summary": generate_summary(memory_stack),
+        "asking_price": arv,
+        "repair_cost": repair_cost
     })
 
     return jsonify({
@@ -248,6 +242,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
