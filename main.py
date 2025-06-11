@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify
 import os
 from openai import OpenAI
@@ -49,7 +48,6 @@ def detect_tone(input_text):
             return tone
     return "neutral"
 
-# Intent Detection
 def detect_seller_intent(text):
     text = text.lower()
     if any(kw in text for kw in ["how much", "offer", "price", "what would you give"]):
@@ -65,7 +63,6 @@ def detect_seller_intent(text):
     else:
         return "general_inquiry"
 
-# Token Counter
 def num_tokens_from_messages(messages, model="gpt-4"):
     encoding = tiktoken.encoding_for_model(model)
     tokens_per_message = 3
@@ -80,7 +77,6 @@ def num_tokens_from_messages(messages, model="gpt-4"):
     num_tokens += 3
     return num_tokens
 
-# ROI Calculation Logic
 def calculate_investor_price(arv, repair_cost, target_roi):
     realtor_fees = arv * 0.06
     holding_costs = 0.01 * (arv - repair_cost) * 3
@@ -137,10 +133,10 @@ Even if the seller gives a good price, SARA will still counter slightly (e.g. 2%
     walkthrough_logic = """
 You are a virtual wholesaling assistant. You should NOT suggest scheduling an in-person walkthrough unless:
 - The seller explicitly asks about meeting or showing the home, OR
-- The conversation is far enough along that you've agreed on a price or are in final contract steps.
+- The conversation is far enough along that you\'ve agreed on a price or are in final contract steps.
 
 Instead, say something like:
-'As part of our process, once we come to terms, we’ll have someone swing by later just to verify condition during the due diligence period — nothing for you to worry about right now.'
+"As part of our process, once we come to terms, we’ll have someone swing by later just to verify condition during the due diligence period — nothing for you to worry about right now."
 
 Avoid sounding pushy or rushing the walkthrough — your goal is to make the seller feel comfortable and in control.
 """
