@@ -1,5 +1,3 @@
-# main.py
-
 from flask import Flask, request, jsonify
 import os
 from openai import OpenAI
@@ -7,7 +5,7 @@ from dotenv import load_dotenv
 from pinecone import Pinecone
 import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
-from memory_summarizer import summarize_conversation, reduce_conversation_log
+from memory_summarizer import summarize_and_trim_memory
 from datetime import datetime
 
 # Load environment variables
@@ -29,7 +27,6 @@ conversation_memory = {
     "history": []
 }
 MEMORY_LIMIT = 5
-SUMMARY_TRIGGER_TURNS = 8
 
 # Seller Tone Mapping
 tone_map = {
@@ -79,6 +76,18 @@ def detect_contradiction(seller_input, seller_data):
             if "roof is fine" in seller_input.lower() or "no issues" in seller_input.lower():
                 contradictions.append("condition_notes")
     return contradictions
+
+def generate_summary(user_messages):
+    summary_prompt = [
+        {"role": "system", "content": "Summarize the following conversation from a seller to highlight key points like motivation, condition, timeline, and pricing. Be concise and natural."},
+        {"role": "user", "content": "\n".join(user_messages)}
+    ]
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=summary_prompt,
+        temperature=0.5
+    )
+    return response.choices[0].message.content
 
 def num_tokens_from_messages(messages, model="gpt-4"):
     encoding = tiktoken.encoding_for_model(model)
@@ -144,24 +153,9 @@ def webhook():
         except:
             pass
 
+    call_summary = generate_summary([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
-
-    if len(conversation_memory["history"]) >= SUMMARY_TRIGGER_TURNS:
-        summary = summarize_conversation([msg["content"] for msg in conversation_memory["history"] if msg["role"] == "user"])
-        summary_record = {
-            "summary": summary,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        if seller_data and "summary_history" in seller_data and isinstance(seller_data["summary_history"], list):
-            updated_history = seller_data["summary_history"] + [summary_record]
-        else:
-            updated_history = [summary_record]
-
-        conversation_memory["history"] = reduce_conversation_log(conversation_memory["history"], summary)
-    else:
-        summary = None
-        updated_history = seller_data.get("summary_history", []) if seller_data else []
 
     walkthrough_logic = """
 You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
@@ -170,7 +164,8 @@ Use language like: "Once we agree on terms, we’ll verify condition — nothing
 
     system_prompt = f"""
 {contradiction_note}
-{f"Previous Summary: {summary}" if summary else ""}
+Previous Summary:
+{call_summary}
 
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
@@ -206,10 +201,14 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
 
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
+    summarized, trimmed = summarize_and_trim_memory(phone_number, conversation_memory["history"])
+    if trimmed:
+        conversation_memory["history"] = trimmed
+
     update_payload = {
         "conversation_log": conversation_memory["history"],
-        "call_summary": summary,
-        "summary_history": updated_history,
+        "call_summary": call_summary,
+        "summary_history": summarized,
         "asking_price": data.get("asking_price"),
         "repair_cost": data.get("repair_cost"),
         "estimated_arv": data.get("arv"),
@@ -235,7 +234,7 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
         "content": reply,
         "tone": seller_tone,
         "intent": seller_intent,
-        "summary": summary,
+        "summary": call_summary,
         "nepq_examples": top_pairs,
         "reasoning": investor_offer,
         "contradictions": contradictions
@@ -247,6 +246,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
