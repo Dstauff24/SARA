@@ -69,4 +69,9 @@ def update_seller_memory(phone_number: str, updates: dict):
         updates["phone_number"] = phone_number
 
         # Perform upsert
-        response = supabase.table(
+        response = supabase.table("seller_memory").upsert(updates).execute()
+        return response
+    except Exception as e:
+        print(f"[Supabase Error] Failed to update seller memory: {e}")
+        return None
+
