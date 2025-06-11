@@ -7,6 +7,7 @@ import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
 from datetime import datetime
 import json
+import re
 
 # Load environment variables
 load_dotenv()
@@ -80,6 +81,19 @@ def calculate_investor_price(arv, repair_cost, target_roi):
     investor_profit = target_roi * (arv - repair_cost)
     max_price = arv - (realtor_fees + holding_costs + repair_cost + investor_profit)
     return round(max_price, 2)
+
+def extract_offer_amount(text):
+    match = re.search(r"\\$([0-9]{2,6}(?:,[0-9]{3})*(?:\\.[0-9]{2})?)", text)
+    if match:
+        return float(match.group(1).replace(',', ''))
+    return None
+
+def generate_summary(memory):
+    summary = []
+    for message in memory[-10:]:
+        if message["role"] == "user" and any(x in message["content"].lower() for x in ["need", "sell", "roof", "foreclosure", "price", "offer"]):
+            summary.append(message["content"])
+    return " | ".join(summary[:3])
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -180,11 +194,27 @@ Always sound like a human. Be calm, strategic, and natural.
     # Append assistant reply
     long_term_memory.append({"role": "assistant", "content": reply})
 
+    # Extract offer and update offer history
+    offer_amount = extract_offer_amount(reply)
+    offer_entry = None
+    if offer_amount:
+        offer_entry = {
+            "amount": offer_amount,
+            "date": datetime.utcnow().isoformat()
+        }
+
+    existing_history = seller_data.get("offer_history", []) if seller_data else []
+    if offer_entry:
+        existing_history.append(offer_entry)
+
     # Save updated memory back to Supabase
     update_seller_memory(phone_number, {
         "conversation_log": long_term_memory,
         "disposition_status": "follow-up",
-        "last_updated": datetime.utcnow().isoformat()
+        "last_updated": datetime.utcnow().isoformat(),
+        "last_offer_amount": offer_amount,
+        "offer_history": existing_history,
+        "call_summary": generate_summary(long_term_memory)
     })
 
     return jsonify({
@@ -201,5 +231,6 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
