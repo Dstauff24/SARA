@@ -1,12 +1,14 @@
+# main.py
+
 from flask import Flask, request, jsonify
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
 import tiktoken
-from datetime import datetime
 from seller_memory_service import get_seller_memory, update_seller_memory
 from memory_summarizer import summarize_conversation, reduce_conversation_log
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -26,7 +28,8 @@ app = Flask(__name__)
 conversation_memory = {
     "history": []
 }
-MEMORY_LIMIT = 8
+MEMORY_LIMIT = 5
+SUMMARY_TRIGGER_TURNS = 8
 
 # Seller Tone Mapping
 tone_map = {
@@ -114,10 +117,8 @@ def webhook():
     seller_data = get_seller_memory(phone_number)
 
     conversation_memory["history"].append({"role": "user", "content": seller_input})
-
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
-        summary = summarize_conversation([msg["content"] for msg in conversation_memory["history"] if msg["role"] == "user"])
-        conversation_memory["history"] = reduce_conversation_log(conversation_memory["history"], summary, keep_turns=4)
+        conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
     try:
         vector = client.embeddings.create(
@@ -143,19 +144,33 @@ def webhook():
         except:
             pass
 
-    call_summary = summarize_conversation([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
+    if len(conversation_memory["history"]) >= SUMMARY_TRIGGER_TURNS:
+        summary = summarize_conversation([msg["content"] for msg in conversation_memory["history"] if msg["role"] == "user"])
+        summary_record = {
+            "summary": summary,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        if seller_data and "summary_history" in seller_data and isinstance(seller_data["summary_history"], list):
+            updated_history = seller_data["summary_history"] + [summary_record]
+        else:
+            updated_history = [summary_record]
+
+        conversation_memory["history"] = reduce_conversation_log(conversation_memory["history"], summary)
+    else:
+        summary = None
+        updated_history = seller_data.get("summary_history", []) if seller_data else []
+
     walkthrough_logic = """
 You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
-Use language like: \"Once we agree on terms, we’ll verify condition — nothing for you to worry about now.\"
+Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
 """
 
     system_prompt = f"""
 {contradiction_note}
-Previous Summary:
-{call_summary}
+{f"Previous Summary: {summary}" if summary else ""}
 
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
@@ -193,7 +208,8 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
 
     update_payload = {
         "conversation_log": conversation_memory["history"],
-        "call_summary": call_summary,
+        "call_summary": summary,
+        "summary_history": updated_history,
         "asking_price": data.get("asking_price"),
         "repair_cost": data.get("repair_cost"),
         "estimated_arv": data.get("arv"),
@@ -219,7 +235,7 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
         "content": reply,
         "tone": seller_tone,
         "intent": seller_intent,
-        "summary": call_summary,
+        "summary": summary,
         "nepq_examples": top_pairs,
         "reasoning": investor_offer,
         "contradictions": contradictions
@@ -231,6 +247,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
