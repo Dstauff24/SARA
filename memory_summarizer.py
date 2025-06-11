@@ -33,6 +33,10 @@ def reduce_conversation_log(full_log: list[dict], summary: str, keep_turns: int 
     - Keeps the last `keep_turns` user/assistant messages
     - Prepends the generated summary as a system message
     """
-    trimmed_log = full_log[-(keep_turns * 2):]  # Approx. 4 turns
+    if not full_log:
+        return [{"role": "system", "content": f"Conversation Summary: {summary}"}]
+
+    trimmed_log = full_log[-(keep_turns * 2):]  # Approx. 4 user/assistant turns
     summary_entry = {"role": "system", "content": f"Conversation Summary: {summary}"}
     return [summary_entry] + trimmed_log
+
