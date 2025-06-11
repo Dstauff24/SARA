@@ -22,12 +22,6 @@ index = pc.Index(pinecone_index_name)
 # Flask App
 app = Flask(__name__)
 
-# Short-Term Memory
-conversation_memory = {
-    "history": []
-}
-MEMORY_LIMIT = 5
-
 # Seller Tone Mapping
 tone_map = {
     "angry": ["this is ridiculous", "i’m pissed", "you people", "frustrated"],
@@ -101,14 +95,12 @@ def webhook():
     # Load long-term memory from Supabase
     seller_data = get_seller_memory(phone_number)
     long_term_memory = seller_data.get("conversation_log", []) if seller_data else []
-    conversation_memory["history"] = long_term_memory[-MEMORY_LIMIT * 2:]
+
+    # Append the current user message
+    long_term_memory.append({"role": "user", "content": seller_input})
 
     seller_tone = detect_tone(seller_input)
     seller_intent = detect_seller_intent(seller_input)
-
-    conversation_memory["history"].append({"role": "user", "content": seller_input})
-    if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
-        conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
     try:
         vector = client.embeddings.create(
@@ -170,7 +162,7 @@ Always sound like a human. Be calm, strategic, and natural.
 """
 
     messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(conversation_memory["history"])
+    messages.extend(long_term_memory)
 
     while num_tokens_from_messages(messages) > 3000:
         messages.pop(1)
@@ -185,11 +177,12 @@ Always sound like a human. Be calm, strategic, and natural.
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-    conversation_memory["history"].append({"role": "assistant", "content": reply})
+    # Append assistant reply
+    long_term_memory.append({"role": "assistant", "content": reply})
 
     # Save updated memory back to Supabase
     update_seller_memory(phone_number, {
-        "conversation_log": conversation_memory["history"],
+        "conversation_log": long_term_memory,
         "disposition_status": "follow-up",
         "last_updated": datetime.utcnow().isoformat()
     })
@@ -208,4 +201,5 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
