@@ -4,6 +4,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
 import tiktoken
+from seller_memory_service import get_seller_memory, update_seller_memory
+
 
 # Load environment variables
 load_dotenv()
