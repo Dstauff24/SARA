@@ -117,13 +117,6 @@ def webhook():
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
-    # 🧠 Summarize and trim
-    conversation_memory["history"], call_summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
-
-    # ✅ Detect contradictions
-    contradictions = detect_contradiction(seller_input, seller_data)
-    contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
-
     try:
         vector = client.embeddings.create(
             input=[seller_input],
@@ -148,15 +141,21 @@ def webhook():
         except:
             pass
 
+    contradictions = detect_contradiction(seller_input, seller_data)
+    contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
+
     walkthrough_logic = """
 You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
-Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
+Use language like: \"Once we agree on terms, we’ll verify condition — nothing for you to worry about now.\"
 """
+
+    # 🔁 Summarize memory and trim
+    conversation_memory["history"], summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
 
     system_prompt = f"""
 {contradiction_note}
 Previous Summary:
-{call_summary}
+{summary}
 
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
@@ -194,7 +193,7 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
 
     update_payload = {
         "conversation_log": conversation_memory["history"],
-        "call_summary": call_summary,
+        "call_summary": summary,
         "asking_price": data.get("asking_price"),
         "repair_cost": data.get("repair_cost"),
         "estimated_arv": data.get("arv"),
@@ -220,7 +219,7 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
         "content": reply,
         "tone": seller_tone,
         "intent": seller_intent,
-        "summary": call_summary,
+        "summary": summary,
         "nepq_examples": top_pairs,
         "reasoning": investor_offer,
         "contradictions": contradictions
@@ -232,3 +231,4 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
