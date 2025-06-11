@@ -1,8 +1,7 @@
 import json
 import os
 import pinecone
-from openai import OpenAI
-from openai.embeddings_utils import get_embedding
+import openai
 
 # Load environment variables
 PINECONE_API_KEY = os.environ["PINECONE_API_KEY"]
@@ -13,7 +12,7 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 # Initialize clients
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 index = pinecone.Index(INDEX_NAME)
-openai = OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
 # Load JSON files
 json_paths = [
@@ -23,11 +22,11 @@ json_paths = [
 
 # Prepare data
 def embed_text(text):
-    response = openai.embeddings.create(
+    response = openai.Embedding.create(
         input=[text],
         model="text-embedding-3-small"
     )
-    return response.data[0].embedding
+    return response["data"][0]["embedding"]
 
 for path in json_paths:
     with open(path, "r") as f:
