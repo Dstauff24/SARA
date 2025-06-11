@@ -114,9 +114,15 @@ def webhook():
     seller_data = get_seller_memory(phone_number)
 
     conversation_memory["history"].append({"role": "user", "content": seller_input})
+    if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
+        conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
-    # 🔄 Auto-trim memory and summarize
+    # 🧠 Summarize and trim
     conversation_memory["history"], call_summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
+
+    # ✅ Detect contradictions
+    contradictions = detect_contradiction(seller_input, seller_data)
+    contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
     try:
         vector = client.embeddings.create(
@@ -141,9 +147,6 @@ def webhook():
             offer_amount = initial_offer
         except:
             pass
-
-    contradictions = detect_contradiction(seller_input, seller_data)
-    contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
     walkthrough_logic = """
 You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
@@ -229,14 +232,3 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
-
-
-
-
-
-
-
-
-
-
-
