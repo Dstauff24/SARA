@@ -12,7 +12,6 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 # Initialize Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-
 def get_seller_memory(phone_number: str):
     """
     Retrieves seller memory by phone number from the 'seller_memory' table.
@@ -51,7 +50,6 @@ def get_seller_memory(phone_number: str):
         print(f"[Supabase Error] Failed to retrieve seller memory: {e}")
         return None
 
-
 def update_seller_memory(phone_number: str, updates: dict):
     """
     Updates or inserts seller memory fields in the 'seller_memory' table.
@@ -68,10 +66,11 @@ def update_seller_memory(phone_number: str, updates: dict):
         # Ensure phone number is included for upsert
         updates["phone_number"] = phone_number
 
-        # Perform upsert
-        response = supabase.table("seller_memory").upsert(updates).execute()
+        # Perform upsert with conflict resolution on phone_number
+        response = supabase.table("seller_memory").upsert(updates, on_conflict="phone_number").execute()
         return response
     except Exception as e:
         print(f"[Supabase Error] Failed to update seller memory: {e}")
         return None
+
 
