@@ -95,6 +95,16 @@ def generate_summary(memory):
             summary.append(message["content"])
     return " | ".join(summary[:3])
 
+def detect_contradiction(current_input, previous_data):
+    contradictions = []
+    lowered = current_input.lower()
+    if previous_data:
+        if previous_data.get("asking_price") and str(int(previous_data["asking_price"])) not in lowered and "price" in lowered:
+            contradictions.append("asking price")
+        if previous_data.get("repair_cost") and any(x in lowered for x in ["great shape", "move-in ready"]) and int(previous_data.get("repair_cost", 0)) > 10000:
+            contradictions.append("repair condition")
+    return contradictions
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
@@ -109,12 +119,15 @@ def webhook():
     # Load long-term memory from Supabase
     seller_data = get_seller_memory(phone_number)
     long_term_memory = seller_data.get("conversation_log", []) if seller_data else []
+    call_summary = seller_data.get("call_summary", "") if seller_data else ""
 
     # Append the current user message
     long_term_memory.append({"role": "user", "content": seller_input})
 
     seller_tone = detect_tone(seller_input)
     seller_intent = detect_seller_intent(seller_input)
+    contradictions = detect_contradiction(seller_input, seller_data)
+    contradiction_note = f"Note: This may contradict previous details about {', '.join(contradictions)}. Consider clarifying." if contradictions else ""
 
     try:
         vector = client.embeddings.create(
@@ -160,6 +173,10 @@ Avoid sounding pushy or rushing the walkthrough — your goal is to make the sel
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
 Seller Intent: {seller_intent}
+
+Previous Call Summary: {call_summary}
+{contradiction_note}
+
 Negotiation Instructions:
 {investor_offer}
 
@@ -231,6 +248,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
