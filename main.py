@@ -1,7 +1,6 @@
-# main.py
-
 from flask import Flask, request, jsonify
 import os
+import json
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
@@ -119,6 +118,9 @@ def webhook():
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
+    # Summarize and trim memory
+    conversation_memory["history"], call_summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
+
     try:
         vector = client.embeddings.create(
             input=[seller_input],
@@ -142,10 +144,6 @@ def webhook():
             offer_amount = initial_offer
         except:
             pass
-
-    # 🔁 New summary integration logic
-    conversation_memory["history"], summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
-    call_summary = summary
 
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
@@ -194,16 +192,9 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
 
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
-    summary_history = seller_data.get("summary_history", []) if seller_data else []
-    summary_history.append({
-        "summary": summary,
-        "timestamp": datetime.utcnow().isoformat()
-    })
-
     update_payload = {
         "conversation_log": conversation_memory["history"],
         "call_summary": call_summary,
-        "summary_history": summary_history,
         "asking_price": data.get("asking_price"),
         "repair_cost": data.get("repair_cost"),
         "estimated_arv": data.get("arv"),
@@ -223,6 +214,19 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
             })
             update_payload["offer_history"] = offer_history
 
+        # Parse and update summary history safely
+        summary_history_raw = seller_data.get("summary_history", "[]")
+        try:
+            summary_history = json.loads(summary_history_raw) if isinstance(summary_history_raw, str) else summary_history_raw
+        except:
+            summary_history = []
+
+        summary_history.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "summary": call_summary
+        })
+        update_payload["summary_history"] = json.dumps(summary_history)
+
     update_seller_memory(phone_number, update_payload)
 
     return jsonify({
@@ -241,4 +245,3 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
-
