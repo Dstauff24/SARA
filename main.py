@@ -5,7 +5,8 @@ from dotenv import load_dotenv
 from pinecone import Pinecone
 import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
-
+from datetime import datetime
+import json
 
 # Load environment variables
 load_dotenv()
@@ -92,9 +93,15 @@ def webhook():
     seller_input = data.get("seller_input", "")
     arv = data.get("arv")
     repair_cost = data.get("repair_cost")
+    phone_number = data.get("phone_number")
 
-    if not seller_input:
-        return jsonify({"error": "Missing seller_input"}), 400
+    if not seller_input or not phone_number:
+        return jsonify({"error": "Missing seller_input or phone_number"}), 400
+
+    # Load long-term memory from Supabase
+    seller_data = get_seller_memory(phone_number)
+    long_term_memory = seller_data.get("conversation_log", []) if seller_data else []
+    conversation_memory["history"] = long_term_memory[-MEMORY_LIMIT * 2:]
 
     seller_tone = detect_tone(seller_input)
     seller_intent = detect_seller_intent(seller_input)
@@ -135,7 +142,7 @@ Even if the seller gives a good price, SARA will still counter slightly (e.g. 2%
     walkthrough_logic = """
 You are a virtual wholesaling assistant. You should NOT suggest scheduling an in-person walkthrough unless:
 - The seller explicitly asks about meeting or showing the home, OR
-- The conversation is far enough along that you\'ve agreed on a price or are in final contract steps.
+- The conversation is far enough along that you've agreed on a price or are in final contract steps.
 
 Instead, say something like:
 "As part of our process, once we come to terms, we’ll have someone swing by later just to verify condition during the due diligence period — nothing for you to worry about right now."
@@ -180,6 +187,13 @@ Always sound like a human. Be calm, strategic, and natural.
 
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
+    # Save updated memory back to Supabase
+    update_seller_memory(phone_number, {
+        "conversation_log": conversation_memory["history"],
+        "disposition_status": "follow-up",
+        "last_updated": datetime.utcnow().isoformat()
+    })
+
     return jsonify({
         "content": reply,
         "tone": seller_tone,
@@ -194,3 +208,4 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
