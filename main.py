@@ -215,12 +215,12 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
 
     if seller_data:
         offer_history = seller_data.get("offer_history") or []
-if offer_amount:
-    offer_history.append({
-        "amount": offer_amount,
-        "timestamp": datetime.utcnow().isoformat()
-    })
-    update_payload["offer_history"] = offer_history
+        if offer_amount:
+            offer_history.append({
+                "amount": offer_amount,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            update_payload["offer_history"] = offer_history
 
     update_seller_memory(phone_number, update_payload)
 
@@ -240,6 +240,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
