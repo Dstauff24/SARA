@@ -1,6 +1,7 @@
+# main.py
+
 from flask import Flask, request, jsonify
 import os
-import json
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
@@ -118,7 +119,6 @@ def webhook():
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
-    # Summarize and trim memory
     conversation_memory["history"], call_summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
 
     try:
@@ -156,7 +156,7 @@ Use language like: "Once we agree on terms, we’ll verify condition — nothing
     system_prompt = f"""
 {contradiction_note}
 Previous Summary:
-{call_summary}
+{call_summary or "None yet."}
 
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
@@ -214,18 +214,14 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
             })
             update_payload["offer_history"] = offer_history
 
-        # Parse and update summary history safely
-        summary_history_raw = seller_data.get("summary_history", "[]")
-        try:
-            summary_history = json.loads(summary_history_raw) if isinstance(summary_history_raw, str) else summary_history_raw
-        except:
+        summary_history = seller_data.get("summary_history")
+        if not isinstance(summary_history, list):
             summary_history = []
-
         summary_history.append({
-            "timestamp": datetime.utcnow().isoformat(),
-            "summary": call_summary
+            "summary": call_summary,
+            "timestamp": datetime.utcnow().isoformat()
         })
-        update_payload["summary_history"] = json.dumps(summary_history)
+        update_payload["summary_history"] = summary_history
 
     update_seller_memory(phone_number, update_payload)
 
