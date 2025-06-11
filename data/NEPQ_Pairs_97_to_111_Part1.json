@@ -1,0 +1,74 @@
+[
+  {
+    "id": "pair_97",
+    "category": "Process Education",
+    "seller_statement": "How does this whole process actually work?",
+    "tone": "curious",
+    "response": "Great question \u2014 it\u2019s simpler than most people expect. We walk you through a quick assessment of your home, present an offer based on local comps and condition, and if you accept, we handle everything from paperwork to closing.",
+    "follow_up_prompt": "Would it help if I walked you through the timeline from offer to close step-by-step?"
+  },
+  {
+    "id": "pair_98",
+    "category": "Assignment Model Concern",
+    "seller_statement": "Why can't you just buy it yourself if you're making an offer?",
+    "tone": "skeptical",
+    "response": "That\u2019s totally fair to ask. The way we work is by partnering with vetted buyers we trust, which allows us to tailor the offer to fit your timeline and condition. It keeps things simple and gives you more flexibility.",
+    "follow_up_prompt": "Would you like me to explain how that benefits you and avoids delays?"
+  },
+  {
+    "id": "pair_99",
+    "category": "Overwhelmed Seller",
+    "seller_statement": "There\u2019s just too much going on right now to make this decision.",
+    "tone": "emotional",
+    "response": "I completely understand \u2014 life doesn\u2019t pause just because you\u2019re thinking about selling. My goal is to make this one thing a little easier for you, not add more pressure.",
+    "follow_up_prompt": "Would it help to just get the offer info now and check back in when timing is better?"
+  },
+  {
+    "id": "pair_100",
+    "category": "Condition Denial",
+    "seller_statement": "The house is fine \u2014 doesn\u2019t need anything at all.",
+    "tone": "confident",
+    "response": "That\u2019s great to hear \u2014 it\u2019s always easier when homes are already in solid shape. That said, most investors will still make updates to match what buyers expect in today\u2019s market.",
+    "follow_up_prompt": "Would it be okay if I asked a couple quick questions to make sure we\u2019re seeing it the same way?"
+  },
+  {
+    "id": "pair_101",
+    "category": "Agent Comparison",
+    "seller_statement": "My Realtor said I could get way more than that.",
+    "tone": "defensive",
+    "response": "That makes sense \u2014 agents aim for top dollar in a retail setting. We look at the home from an investor\u2019s lens, factoring in repairs, fees, and how fast it can resell. Both paths have pros and cons.",
+    "follow_up_prompt": "Would it help to break down what you\u2019d net each route so you can compare apples to apples?"
+  },
+  {
+    "id": "pair_102",
+    "category": "Negotiation Barrier",
+    "seller_statement": "I don\u2019t want to haggle \u2014 just give me your best number.",
+    "tone": "direct",
+    "response": "Absolutely. I want this to be clean and fair. I just need to make sure I\u2019ve got the full picture before locking in the number, so it\u2019s accurate the first time.",
+    "follow_up_prompt": "Can I confirm a few quick things so I don\u2019t miss anything important?"
+  },
+  {
+    "id": "pair_103",
+    "category": "Emotional Anchor",
+    "seller_statement": "This was my parents\u2019 house \u2014 lots of memories here.",
+    "tone": "emotional",
+    "response": "I appreciate you sharing that. Homes hold a lot more than bricks and paint \u2014 they hold people, stories, and meaning. We\u2019ll treat that with respect.",
+    "follow_up_prompt": "Is there anything you\u2019d want to make sure is handled a certain way if we move forward?"
+  },
+  {
+    "id": "pair_104",
+    "category": "Follow-Up Disinterest",
+    "seller_statement": "I don\u2019t really want to be contacted unless you have something serious.",
+    "tone": "withdrawn",
+    "response": "I get that \u2014 no one wants to be bombarded. I\u2019ll keep it short and only reach out if we have a concrete update or a real offer.",
+    "follow_up_prompt": "Would text or email be better just in case something changes?"
+  },
+  {
+    "id": "pair_105",
+    "category": "Too Many Offers",
+    "seller_statement": "I\u2019ve already gotten 10 offers \u2014 this is overwhelming.",
+    "tone": "overwhelmed",
+    "response": "Totally understand \u2014 this process shouldn\u2019t feel like a full-time job. I can walk you through what matters most and help you cut through the noise so it\u2019s easier to decide.",
+    "follow_up_prompt": "Do you want a quick breakdown of how we stack up next to the rest?"
+  }
+]

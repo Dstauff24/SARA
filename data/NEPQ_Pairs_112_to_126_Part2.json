@@ -1,0 +1,122 @@
+[
+  {
+    "id": "pair_112",
+    "seller_statement": "I just got divorced and I\u2019m not sure what I want to do with the house.",
+    "tone": "Vulnerable / Conflicted",
+    "category": "Life Transition",
+    "response": "I'm really sorry you're going through that \u2014 totally understand it\u2019s a lot to deal with. You're not alone in feeling torn on what to do next.",
+    "follow_up_prompt": "Would it be helpful to just walk through some options together and see what might make the most sense?"
+  },
+  {
+    "id": "pair_113",
+    "seller_statement": "I'm dealing with a probate situation right now.",
+    "tone": "Reserved / Overwhelmed",
+    "category": "Legal Complexity",
+    "response": "I hear you \u2014 probate can feel like a maze, especially with everything else you might be juggling.",
+    "follow_up_prompt": "Have the courts outlined the next steps yet, or are you still sorting through it all?"
+  },
+  {
+    "id": "pair_114",
+    "seller_statement": "My siblings and I inherited the house and can\u2019t agree on what to do.",
+    "tone": "Frustrated / Stuck",
+    "category": "Multiple Decision Makers",
+    "response": "That\u2019s really common \u2014 each person has a different idea of what\u2019s best. My role is to help find a solution that works for everyone involved.",
+    "follow_up_prompt": "Would it help if I shared how other families in similar situations have found a middle ground?"
+  },
+  {
+    "id": "pair_115",
+    "seller_statement": "I\u2019m thinking about selling, but my spouse isn\u2019t on board yet.",
+    "tone": "Tense / Uncertain",
+    "category": "Joint Decision Resistance",
+    "response": "Totally fair \u2014 that\u2019s a big decision and both people need to feel aligned. I\u2019ve worked with couples before in the same boat.",
+    "follow_up_prompt": "Would it help if I shared some information both of you could look over before discussing further?"
+  },
+  {
+    "id": "pair_116",
+    "seller_statement": "I already tried listing it and it didn\u2019t sell.",
+    "tone": "Disappointed / Wary",
+    "category": "Expired Listing",
+    "response": "That\u2019s frustrating \u2014 especially after going through all that effort. Listings don\u2019t always get the right eyes on them.",
+    "follow_up_prompt": "Do you know why it didn\u2019t move last time? Was it condition, price, or something else?"
+  },
+  {
+    "id": "pair_117",
+    "seller_statement": "I\u2019m getting overwhelmed with the amount of calls I\u2019ve gotten since I filled out that form.",
+    "tone": "Overloaded / Annoyed",
+    "category": "Lead Fatigue",
+    "response": "I believe it \u2014 the flood of calls can get ridiculous. I\u2019m not here to be pushy, just to see if it still makes sense to chat.",
+    "follow_up_prompt": "Is there anything you\u2019re still hoping to get clarity on that no one\u2019s helped with yet?"
+  },
+  {
+    "id": "pair_118",
+    "seller_statement": "You guys are all saying the same thing. Why should I listen to you?",
+    "tone": "Skeptical / Defensive",
+    "category": "Trust Objection",
+    "response": "Fair question \u2014 and you\u2019re right, it probably does sound like a broken record. My goal is to actually *show* value, not just say the same things.",
+    "follow_up_prompt": "Can I take 60 seconds to walk you through how we\u2019re a little different \u2014 and then you can decide if it\u2019s worth continuing?"
+  },
+  {
+    "id": "pair_119",
+    "seller_statement": "I\u2019m honestly just scared of getting screwed over.",
+    "tone": "Fearful / Honest",
+    "category": "Fear of Being Burned",
+    "response": "I appreciate you being real with me \u2014 and you\u2019re not wrong to feel cautious. There are bad actors out there. I\u2019m here to earn your trust, not ask for it.",
+    "follow_up_prompt": "Would seeing examples of how we\u2019ve helped others in tough situations help ease that fear a bit?"
+  },
+  {
+    "id": "pair_120",
+    "seller_statement": "I feel like I\u2019d be giving the house away at that price.",
+    "tone": "Offended / Protective",
+    "category": "Price Sensitivity",
+    "response": "That\u2019s a fair feeling \u2014 it\u2019s your asset, and you\u2019ve likely got years of connection to it. The goal isn\u2019t to lowball \u2014 it\u2019s to find a win-win.",
+    "follow_up_prompt": "What price would *not* feel like giving it away \u2014 and if we got close to that, would it feel more fair?"
+  },
+  {
+    "id": "pair_121",
+    "seller_statement": "I don\u2019t want this to drag on forever.",
+    "tone": "Impatient / Goal-Oriented",
+    "category": "Desire for Speed",
+    "response": "Completely understand \u2014 time is valuable. We aim to keep things simple and efficient so you\u2019re not left hanging.",
+    "follow_up_prompt": "If we were able to close within 10\u201314 days, would that timeline match what you\u2019re hoping for?"
+  },
+  {
+    "id": "pair_122",
+    "seller_statement": "What happens if I change my mind later?",
+    "tone": "Cautious / Curious",
+    "category": "Risk Concern",
+    "response": "Great question \u2014 you\u2019re not locked in just by talking. Transparency matters, and there\u2019s no obligation until everything\u2019s in writing.",
+    "follow_up_prompt": "Would you feel better if I walked through the steps so you can see where you\u2019d still have flexibility?"
+  },
+  {
+    "id": "pair_123",
+    "seller_statement": "I\u2019m only talking because my friend told me I should consider it.",
+    "tone": "Uninvested / Curious",
+    "category": "Referral-Driven Inquiry",
+    "response": "That\u2019s usually the best kind of intro \u2014 people trust their friends more than ads or strangers. I\u2019ll keep it brief and helpful.",
+    "follow_up_prompt": "Did your friend mention what made them think this might be a good fit for you?"
+  },
+  {
+    "id": "pair_124",
+    "seller_statement": "What if I owe more than it\u2019s worth?",
+    "tone": "Concerned / Vulnerable",
+    "category": "Underwater Mortgage",
+    "response": "That can feel like a trap, but there *are* ways through it. I\u2019ve helped people in that spot before \u2014 it\u2019s not a dead end.",
+    "follow_up_prompt": "Do you know roughly what\u2019s still owed versus what the market says it\u2019s worth?"
+  },
+  {
+    "id": "pair_125",
+    "seller_statement": "I just don\u2019t want to deal with any more stress.",
+    "tone": "Exhausted / Done",
+    "category": "Burnout / Emotional Overload",
+    "response": "That\u2019s totally valid \u2014 when life\u2019s already chaotic, adding real estate stress isn\u2019t ideal. I\u2019m here to simplify, not pile on.",
+    "follow_up_prompt": "If I could show a way to make this as low-stress as possible, would that be worth a quick look?"
+  },
+  {
+    "id": "pair_126",
+    "seller_statement": "What\u2019s the catch? This feels too easy.",
+    "tone": "Suspicious / Cautious",
+    "category": "Too Good to Be True",
+    "response": "I get that \u2014 when things sound simple, the reflex is to question it. There\u2019s no catch, just a clear process and real options.",
+    "follow_up_prompt": "Want me to break down exactly how it works and where you can walk away if anything feels off?"
+  }
+]
