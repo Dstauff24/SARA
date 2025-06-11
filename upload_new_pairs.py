@@ -1,53 +1,57 @@
-import json
 import os
-import openai
+import json
+from openai import OpenAI
 from pinecone import Pinecone
+from dotenv import load_dotenv
 
 # Load environment variables
-PINECONE_API_KEY = os.environ["PINECONE_API_KEY"]
-PINECONE_INDEX = os.environ["PINECONE_INDEX"]
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+load_dotenv()
 
-# Initialize Pinecone and OpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_ENV = os.getenv("PINECONE_ENV")
+PINECONE_INDEX = os.getenv("PINECONE_INDEX_NAME")
+
+# Initialize OpenAI client
+openai = OpenAI(api_key=OPENAI_API_KEY)
+
+# Initialize Pinecone
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index(PINECONE_INDEX)
-openai.api_key = OPENAI_API_KEY
 
-# Load JSON files
+# Target JSON files
 json_paths = [
-    "./NEPQ_Pairs_97_to_111_Part1.json",
-    "./NEPQ_Pairs_112_to_126_Part2.json"
+    "./data/NEPQ_Pairs_97_to_111_Part1.json",
+    "./data/NEPQ_Pairs_112_to_126_Part2.json"
 ]
 
-# Embedding helper
-def embed_text(text):
-    response = openai.Embedding.create(
-        input=[text],
-        model="text-embedding-3-small"
-    )
-    return response["data"][0]["embedding"]
+# Embedding function
+def get_embedding(text, model="text-embedding-3-small"):
+    text = text.replace("\n", " ")
+    response = openai.embeddings.create(input=[text], model=model)
+    return response.data[0].embedding
 
-# Upload to Pinecone
-for path in json_paths:
-    with open(path, "r") as f:
-        data = json.load(f)
+# Upload each JSON file
+for json_path in json_paths:
+    with open(json_path, "r") as f:
+        training_pairs = json.load(f)
 
-    upserts = []
-    for item in data:
-        combined_text = f"{item['seller_statement']} {item['response']} {item['follow_up_prompt']}"
-        embedding = embed_text(combined_text)
+    vectors = []
+    for pair in training_pairs:
+        seller_statement = pair["seller_statement"]
+        vector = get_embedding(seller_statement)
+        vectors.append({
+            "id": pair["id"],
+            "values": vector,
+            "metadata": {
+                "tone": pair["tone"],
+                "category": pair["category"],
+                "response": pair["response"],
+                "follow_up_prompt": pair["follow_up_prompt"]
+            }
+        })
 
-        metadata = {
-            "seller_statement": item["seller_statement"],
-            "response": item["response"],
-            "follow_up_prompt": item["follow_up_prompt"],
-            "tone": item["tone"],
-            "category": item["category"]
-        }
+    # Upsert to Pinecone
+    index.upsert(vectors=vectors)
 
-        upserts.append((item["id"], embedding, metadata))
-
-    # Push batch to Pinecone
-    index.upsert(vectors=upserts)
-
-print("✅ New NEPQ pairs successfully uploaded.")
+print("Upload complete.")
