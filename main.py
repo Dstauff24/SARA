@@ -1,12 +1,14 @@
+# main.py
+
 from flask import Flask, request, jsonify
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
 import tiktoken
-from datetime import datetime
 from seller_memory_service import get_seller_memory, update_seller_memory
 from memory_summarizer import summarize_and_trim_memory
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -141,21 +143,22 @@ def webhook():
         except:
             pass
 
+    # 🔁 New summary integration logic
+    conversation_memory["history"], summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
+    call_summary = summary
+
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
     walkthrough_logic = """
 You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
-Use language like: \"Once we agree on terms, we’ll verify condition — nothing for you to worry about now.\"
+Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
 """
-
-    # 🔁 Summarize memory and trim
-    conversation_memory["history"], summary = summarize_and_trim_memory(phone_number, conversation_memory["history"])
 
     system_prompt = f"""
 {contradiction_note}
 Previous Summary:
-{summary}
+{call_summary}
 
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
@@ -191,9 +194,16 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
 
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
+    summary_history = seller_data.get("summary_history", []) if seller_data else []
+    summary_history.append({
+        "summary": summary,
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
     update_payload = {
         "conversation_log": conversation_memory["history"],
-        "call_summary": summary,
+        "call_summary": call_summary,
+        "summary_history": summary_history,
         "asking_price": data.get("asking_price"),
         "repair_cost": data.get("repair_cost"),
         "estimated_arv": data.get("arv"),
@@ -219,7 +229,7 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
         "content": reply,
         "tone": seller_tone,
         "intent": seller_intent,
-        "summary": summary,
+        "summary": call_summary,
         "nepq_examples": top_pairs,
         "reasoning": investor_offer,
         "contradictions": contradictions
