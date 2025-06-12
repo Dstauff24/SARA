@@ -3,10 +3,10 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
+from datetime import datetime
 import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
 from memory_summarizer import summarize_and_trim_memory
-from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -14,13 +14,15 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_index_name = os.getenv("PINECONE_INDEX")
 
-# Initialize clients
 client = OpenAI(api_key=openai_api_key)
 pc = Pinecone(api_key=pinecone_api_key)
 index = pc.Index(pinecone_index_name)
 
 app = Flask(__name__)
-conversation_memory = {"history": []}
+
+conversation_memory = {
+    "history": []
+}
 MEMORY_LIMIT = 5
 
 tone_map = {
@@ -38,18 +40,18 @@ tone_map = {
     "direct": ["how much", "what’s the offer", "let’s cut to it"]
 }
 
-def detect_tone(input_text):
-    lowered = input_text.lower()
+def detect_tone(text):
+    lowered = text.lower()
     for tone, keywords in tone_map.items():
-        if any(keyword in lowered for keyword in keywords):
+        if any(kw in lowered for kw in keywords):
             return tone
     return "neutral"
 
 def detect_seller_intent(text):
     text = text.lower()
-    if any(kw in text for kw in ["how much", "offer", "price", "what would you give"]):
+    if any(kw in text for kw in ["how much", "offer", "price"]):
         return "price_sensitive"
-    elif any(kw in text for kw in ["foreclosure", "behind", "bank", "notice"]):
+    elif any(kw in text for kw in ["foreclosure", "behind", "bank"]):
         return "distressed"
     elif any(kw in text for kw in ["maybe", "thinking", "not sure", "depends"]):
         return "on_fence"
@@ -57,42 +59,29 @@ def detect_seller_intent(text):
         return "cold"
     elif any(kw in text for kw in ["vacant", "tenant", "rented", "investment"]):
         return "landlord"
-    else:
-        return "general_inquiry"
+    return "general_inquiry"
 
-def detect_contradiction(seller_input, seller_data):
+def detect_contradiction(seller_input, memory):
     contradictions = []
-    if seller_data:
-        if seller_data.get("asking_price") and str(seller_data["asking_price"]) not in seller_input:
+    if memory:
+        if memory.get("asking_price") and str(memory["asking_price"]) not in seller_input:
             if any(word in seller_input for word in ["price", "$", "want", "need"]):
                 contradictions.append("asking_price")
-        if seller_data.get("condition_notes") and "roof" in seller_data["condition_notes"].lower():
-            if "roof is fine" in seller_input.lower() or "no issues" in seller_input.lower():
+        if memory.get("condition_notes") and "roof" in memory["condition_notes"].lower():
+            if "roof is fine" in seller_input.lower() or "new roof" in seller_input.lower():
                 contradictions.append("condition_notes")
     return contradictions
-
-def generate_summary(user_messages):
-    summary_prompt = [
-        {"role": "system", "content": "Summarize the following conversation from a seller to highlight key points like motivation, condition, timeline, and pricing. Be concise and natural."},
-        {"role": "user", "content": "\n".join(user_messages)}
-    ]
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=summary_prompt,
-        temperature=0.5
-    )
-    return response.choices[0].message.content
 
 def num_tokens_from_messages(messages, model="gpt-4"):
     encoding = tiktoken.encoding_for_model(model)
     tokens_per_message = 3
     tokens_per_name = 1
     num_tokens = 0
-    for message in messages:
+    for msg in messages:
         num_tokens += tokens_per_message
-        for key, value in message.items():
-            num_tokens += len(encoding.encode(value))
-            if key == "name":
+        for k, v in msg.items():
+            num_tokens += len(encoding.encode(v))
+            if k == "name":
                 num_tokens += tokens_per_name
     num_tokens += 3
     return num_tokens
@@ -107,18 +96,30 @@ def calculate_investor_price(arv, repair_cost, target_roi):
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
-    seller_input = data.get("seller_input", "")
+    seller_input = data.get("seller_input")
     phone_number = data.get("phone_number")
-    seller_data = get_seller_memory(phone_number)
-    if not seller_input or not phone_number:
-        return jsonify({"error": "Missing required fields"}), 400
 
-    seller_tone = detect_tone(seller_input)
-    seller_intent = detect_seller_intent(seller_input)
+    if not seller_input or not phone_number:
+        return jsonify({"error": "Missing seller_input or phone_number"}), 400
+
+    # Append to memory
     conversation_memory["history"].append({"role": "user", "content": seller_input})
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
+    # Retrieve prior memory
+    seller_data = get_seller_memory(phone_number)
+
+    # Summarize if long
+    conversation_memory["history"], memory_summary = summarize_and_trim_memory(
+        phone_number, conversation_memory["history"]
+    )
+
+    seller_tone = detect_tone(seller_input)
+    seller_intent = detect_seller_intent(seller_input)
+    contradictions = detect_contradiction(seller_input, seller_data)
+
+    # NEPQ retrieval
     try:
         vector = client.embeddings.create(
             input=[seller_input],
@@ -129,75 +130,100 @@ def webhook():
     except:
         top_pairs = []
 
-    arv = float(data.get("arv", 0))
-    repair_cost = float(data.get("repair_cost", 0))
-    offer_amount = None
+    # Offer logic
     investor_offer = ""
-    if arv and repair_cost:
-        offer_start = calculate_investor_price(arv, repair_cost, 0.30)
-        offer_cap = calculate_investor_price(arv, repair_cost, 0.10)
-        investor_offer = f"Start at ${offer_start}, negotiate up to ${offer_cap}."
-        offer_amount = offer_start
+    offer_amount = None
+    reasoning = ""
+    if data.get("arv") and data.get("repair_cost"):
+        try:
+            arv = float(data["arv"])
+            repair_cost = float(data["repair_cost"])
+            start_offer = calculate_investor_price(arv, repair_cost, 0.30)
+            max_offer = calculate_investor_price(arv, repair_cost, 0.15)
+            hard_cap = calculate_investor_price(arv, repair_cost, 0.10)
+            offer_amount = start_offer
+            investor_offer = f"Start at ${start_offer}, negotiate up to ${max_offer}."
+            reasoning = investor_offer
+        except:
+            pass
 
-    call_summary = generate_summary([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
-    contradiction_list = detect_contradiction(seller_input, seller_data)
-    contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradiction_list)}." if contradiction_list else ""
-
-    messages = summarize_and_trim_memory(phone_number, conversation_memory["history"])
+    # System prompt
+    contradiction_note = f"⚠️ Contradictions: {', '.join(contradictions)}" if contradictions else ""
+    walkthrough_guidance = "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
 
     system_prompt = f"""
 {contradiction_note}
 Previous Summary:
-{call_summary}
+{memory_summary or 'No summary available.'}
 
-You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
+You are SARA, a friendly and strategic real estate acquisitions assistant.
 Seller Tone: {seller_tone}
 Seller Intent: {seller_intent}
-Negotiation Instructions:
-{investor_offer}
-Embed NEPQ:
-{'; '.join(top_pairs) if top_pairs else 'None'}
-Max 3 counteroffers. Speak like a person. Be clear, strategic, and warm.
-"""
+Negotiation: {investor_offer}
 
-messages.insert(0, {"role": "system", "content": system_prompt})
-while num_tokens_from_messages(messages) > 3000:
-    messages.pop(1)
+Walkthrough:
+{walkthrough_guidance}
 
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=messages,
-        temperature=0.7
-    )
-    reply = response.choices[0].message.content
+NEPQ Guidance:
+{"; ".join(top_pairs) if top_pairs else "No NEPQ returned."}
+""".strip()
+
+    messages = [{"role": "system", "content": system_prompt}]
+    messages.extend(conversation_memory["history"])
+
+    while num_tokens_from_messages(messages) > 3000:
+        messages.pop(1)
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.7
+        )
+        reply = response.choices[0].message.content
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
-    # Merge updates from data and preserve existing fields
-    update_payload = seller_data.copy() if seller_data else {}
-    update_payload.update({
+    # Offer history
+    offer_history = seller_data.get("offer_history", []) if seller_data else []
+    if offer_amount:
+        offer_history.append({
+            "amount": offer_amount,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+    # Summary tracking
+    summary_history = seller_data.get("summary_history", []) if seller_data else []
+    if memory_summary:
+        summary_history.append({
+            "summary": memory_summary,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+    # Update Supabase
+    update_payload = {
         "phone_number": phone_number,
-        "call_summary": call_summary,
-        "summary_history": seller_data.get("summary_history", []) + [{"summary": call_summary, "timestamp": datetime.utcnow().isoformat()}] if seller_data else [{"summary": call_summary, "timestamp": datetime.utcnow().isoformat()}],
         "conversation_log": conversation_memory["history"],
-        "asking_price": data.get("asking_price") or seller_data.get("asking_price") if seller_data else None,
-        "repair_cost": data.get("repair_cost") or seller_data.get("repair_cost") if seller_data else None,
-        "estimated_arv": data.get("arv") or seller_data.get("estimated_arv") if seller_data else None,
-        "condition_notes": data.get("condition_notes") or seller_data.get("condition_notes") if seller_data else None,
-        "property_address": data.get("property_address") or seller_data.get("property_address") if seller_data else None,
-        "bedrooms": data.get("bedrooms") or seller_data.get("bedrooms") if seller_data else None,
-        "bathrooms": data.get("bathrooms") or seller_data.get("bathrooms") if seller_data else None,
-        "square_footage": data.get("square_footage") or seller_data.get("square_footage") if seller_data else None,
-        "year_built": data.get("year_built") or seller_data.get("year_built") if seller_data else None,
-        "lead_source": data.get("lead_source") or seller_data.get("lead_source") if seller_data else None,
+        "call_summary": memory_summary,
+        "summary_history": summary_history,
+        "last_offer_amount": offer_amount,
+        "asking_price": data.get("asking_price"),
+        "repair_cost": data.get("repair_cost"),
+        "estimated_arv": data.get("arv"),
         "follow_up_date": data.get("follow_up_date"),
         "follow_up_reason": data.get("follow_up_reason"),
         "follow_up_set_by": data.get("follow_up_set_by"),
-    })
-
-    if offer_amount:
-        offer_history = seller_data.get("offer_history", []) if seller_data else []
-        offer_history.append({"amount": offer_amount, "timestamp": datetime.utcnow().isoformat()})
-        update_payload["offer_history"] = offer_history
+        "property_address": data.get("property_address"),
+        "condition_notes": data.get("condition_notes"),
+        "bedrooms": data.get("bedrooms"),
+        "bathrooms": data.get("bathrooms"),
+        "square_footage": data.get("square_footage"),
+        "year_built": data.get("year_built"),
+        "lead_source": data.get("lead_source"),
+        "offer_history": offer_history
+    }
 
     update_seller_memory(phone_number, update_payload)
 
@@ -205,18 +231,19 @@ while num_tokens_from_messages(messages) > 3000:
         "content": reply,
         "tone": seller_tone,
         "intent": seller_intent,
-        "summary": call_summary,
+        "summary": memory_summary,
         "nepq_examples": top_pairs,
-        "reasoning": investor_offer,
-        "contradictions": contradiction_list
+        "reasoning": reasoning,
+        "contradictions": contradictions
     })
 
 @app.route("/", methods=["GET"])
 def index():
-    return "✅ SARA Webhook is running!"
+    return "✅ SARA Webhook is live!"
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
