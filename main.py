@@ -6,7 +6,6 @@ from pinecone import Pinecone
 import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
 from datetime import datetime
-import re
 
 # Load environment variables
 load_dotenv()
@@ -22,11 +21,13 @@ index = pc.Index(pinecone_index_name)
 # Flask App
 app = Flask(__name__)
 
+# Short-Term Memory
 conversation_memory = {
     "history": []
 }
 MEMORY_LIMIT = 5
 
+# Tone map
 tone_map = {
     "angry": ["this is ridiculous", "i’m pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -108,51 +109,40 @@ def calculate_investor_price(arv, repair_cost, target_roi):
     max_price = arv - (realtor_fees + holding_costs + repair_cost + investor_profit)
     return round(max_price, 2)
 
-def extract_latest_offer(response_text):
-    offers = [int(o.replace(",", "")) for o in re.findall(r"\$\s?(\d{3,})", response_text)]
-    return offers[-1] if offers else None
-
-def generate_update_payload(data, existing_data, conversation_history, summary, final_response):
-    last_offer_amount = extract_latest_offer(final_response)
-    summary_history = existing_data.get("summary_history", [])
-    if not isinstance(summary_history, list):
-        summary_history = []
-
+def generate_update_payload(data, seller_data, history, summary, offer_amount):
+    summary_history = seller_data.get("summary_history") or []
     summary_history.append({
-        "timestamp": datetime.utcnow().isoformat(),
-        "summary": summary
+        "summary": summary,
+        "timestamp": datetime.utcnow().isoformat()
     })
 
-    payload = {
-        "conversation_log": conversation_history,
-        "call_summary": summary,
-        "summary_history": summary_history,
-        "asking_price": data.get("asking_price") or existing_data.get("asking_price"),
-        "repair_cost": data.get("repair_cost") or existing_data.get("repair_cost"),
-        "estimated_arv": data.get("arv") or existing_data.get("estimated_arv"),
-        "last_offer_amount": last_offer_amount or existing_data.get("last_offer_amount"),
-        "follow_up_date": data.get("follow_up_date") or existing_data.get("follow_up_date"),
-        "follow_up_reason": data.get("follow_up_reason") or existing_data.get("follow_up_reason"),
-        "follow_up_set_by": data.get("follow_up_set_by") or existing_data.get("follow_up_set_by"),
-        "phone_number": data.get("phone_number"),
-        "condition_notes": data.get("condition_notes") or existing_data.get("condition_notes"),
-        "property_address": data.get("property_address") or existing_data.get("property_address"),
-        "bedrooms": data.get("bedrooms") or existing_data.get("bedrooms"),
-        "bathrooms": data.get("bathrooms") or existing_data.get("bathrooms"),
-        "square_footage": data.get("square_footage") or existing_data.get("square_footage"),
-        "year_built": data.get("year_built") or existing_data.get("year_built"),
-        "lead_source": data.get("lead_source") or existing_data.get("lead_source")
-    }
-
-    offer_history = existing_data.get("offer_history", [])
-    if last_offer_amount:
+    offer_history = seller_data.get("offer_history") or []
+    if offer_amount:
         offer_history.append({
-            "amount": last_offer_amount,
+            "amount": offer_amount,
             "timestamp": datetime.utcnow().isoformat()
         })
-        payload["offer_history"] = offer_history
 
-    return payload
+    return {
+        "conversation_log": history,
+        "call_summary": summary,
+        "summary_history": summary_history,
+        "asking_price": data.get("asking_price") or seller_data.get("asking_price"),
+        "repair_cost": data.get("repair_cost") or seller_data.get("repair_cost"),
+        "estimated_arv": data.get("arv") or seller_data.get("estimated_arv"),
+        "last_offer_amount": offer_amount or seller_data.get("last_offer_amount"),
+        "follow_up_date": data.get("follow_up_date") or seller_data.get("follow_up_date"),
+        "follow_up_reason": data.get("follow_up_reason") or seller_data.get("follow_up_reason"),
+        "follow_up_set_by": data.get("follow_up_set_by") or seller_data.get("follow_up_set_by"),
+        "property_address": data.get("property_address") or seller_data.get("property_address"),
+        "condition_notes": data.get("condition_notes") or seller_data.get("condition_notes"),
+        "bedrooms": data.get("bedrooms") or seller_data.get("bedrooms"),
+        "bathrooms": data.get("bathrooms") or seller_data.get("bathrooms"),
+        "square_footage": data.get("square_footage") or seller_data.get("square_footage"),
+        "year_built": data.get("year_built") or seller_data.get("year_built"),
+        "lead_source": data.get("lead_source") or seller_data.get("lead_source"),
+        "offer_history": offer_history
+    }
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -185,13 +175,15 @@ def webhook():
         top_pairs = []
 
     investor_offer = ""
+    offer_amount = None
     if arv and repair_cost:
         try:
             arv = float(arv)
             repair_cost = float(repair_cost)
             initial_offer = calculate_investor_price(arv, repair_cost, 0.30)
-            min_offer = calculate_investor_price(arv, repair_cost, 0.10)
+            min_offer = calculate_investor_price(arv, repair_cost, 0.15)
             investor_offer = f"Start at ${initial_offer}, negotiate up to ${min_offer}."
+            offer_amount = initial_offer
         except:
             pass
 
@@ -199,7 +191,10 @@ def webhook():
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
-    walkthrough_logic = "You are a virtual wholesaling assistant. Don’t push for walkthroughs unless terms are nearly agreed. Say: 'Once we agree on terms, we’ll verify condition — nothing for you to worry about now.'"
+    walkthrough_logic = """
+You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
+Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
+"""
 
     system_prompt = f"""
 {contradiction_note}
@@ -215,10 +210,11 @@ Negotiation Instructions:
 Walkthrough Guidance:
 {walkthrough_logic}
 
-Embed NEPQ-style examples:
+Embed the following NEPQ-style examples into your natural conversation:
 {"; ".join(top_pairs) if top_pairs else "No NEPQ matches returned."}
 
-Avoid talking about ROI %. Max 3 counteroffers. Be natural, calm, and strategic.
+Avoid talking about ROI %. Frame our position in terms of real costs and risk.
+Max 3 total counteroffers. Sound human, strategic, and calm.
 """
 
     messages = [{"role": "system", "content": system_prompt}]
@@ -238,7 +234,8 @@ Avoid talking about ROI %. Max 3 counteroffers. Be natural, calm, and strategic.
         return jsonify({"error": str(e)}), 500
 
     conversation_memory["history"].append({"role": "assistant", "content": reply})
-    update_payload = generate_update_payload(data, seller_data or {}, conversation_memory["history"], call_summary, reply)
+
+    update_payload = generate_update_payload(data, seller_data or {}, conversation_memory["history"], call_summary, offer_amount)
     update_seller_memory(phone_number, update_payload)
 
     return jsonify({
@@ -250,6 +247,19 @@ Avoid talking about ROI %. Max 3 counteroffers. Be natural, calm, and strategic.
         "reasoning": investor_offer,
         "contradictions": contradictions
     })
+
+# New GET Route for Testing
+@app.route("/seller_memory", methods=["GET"])
+def get_seller_data():
+    phone_number = request.args.get("phone_number")
+    if not phone_number:
+        return jsonify({"error": "Missing phone number"}), 400
+
+    seller_data = get_seller_memory(phone_number)
+    if not seller_data:
+        return jsonify({"message": "No seller data found for this number"}), 404
+
+    return jsonify(seller_data)
 
 @app.route("/", methods=["GET"])
 def index():
