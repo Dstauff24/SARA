@@ -6,6 +6,7 @@ from pinecone import Pinecone
 import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
 from datetime import datetime
+import json
 
 # Load environment variables
 load_dotenv()
@@ -107,33 +108,51 @@ def calculate_investor_price(arv, repair_cost, target_roi):
     max_price = arv - (realtor_fees + holding_costs + repair_cost + investor_profit)
     return round(max_price, 2)
 
-def generate_update_payload(data, seller_data, conversation_history, call_summary, offer_amount):
-    update_payload = {
-        "conversation_log": conversation_history,
-        "call_summary": call_summary,
-        "asking_price": data.get("asking_price") or seller_data.get("asking_price"),
-        "repair_cost": data.get("repair_cost") or seller_data.get("repair_cost"),
-        "estimated_arv": data.get("arv") or seller_data.get("estimated_arv"),
-        "last_offer_amount": offer_amount,
-        "follow_up_date": data.get("follow_up_date") or seller_data.get("follow_up_date"),
-        "follow_up_reason": data.get("follow_up_reason") or seller_data.get("follow_up_reason"),
-        "follow_up_set_by": data.get("follow_up_set_by") or seller_data.get("follow_up_set_by"),
-        "property_address": data.get("property_address") or seller_data.get("property_address"),
-        "condition_notes": data.get("condition_notes") or seller_data.get("condition_notes"),
-        "bedrooms": data.get("bedrooms") or seller_data.get("bedrooms"),
-        "bathrooms": data.get("bathrooms") or seller_data.get("bathrooms"),
-        "square_footage": data.get("square_footage") or seller_data.get("square_footage"),
-        "year_built": data.get("year_built") or seller_data.get("year_built"),
-        "lead_source": data.get("lead_source") or seller_data.get("lead_source"),
-        "phone_number": data.get("phone_number")
-    }
+def generate_update_payload(data, seller_data, history, call_summary, offer_amount):
+    summary_history_raw = seller_data.get("summary_history", [])
+    if isinstance(summary_history_raw, str):
+        try:
+            summary_history_raw = json.loads(summary_history_raw)
+        except:
+            summary_history_raw = []
 
-    summary_history = seller_data.get("summary_history") or []
-    summary_history.append({
+    if not isinstance(summary_history_raw, list):
+        summary_history_raw = []
+
+    summary_history_raw.append({
         "summary": call_summary,
         "timestamp": datetime.utcnow().isoformat()
     })
-    update_payload["summary_history"] = summary_history
+
+    update_payload = {
+        "conversation_log": history,
+        "call_summary": call_summary,
+        "summary_history": summary_history_raw,
+        "asking_price": data.get("asking_price"),
+        "repair_cost": data.get("repair_cost"),
+        "estimated_arv": data.get("arv"),
+        "last_offer_amount": offer_amount,
+        "follow_up_date": data.get("follow_up_date"),
+        "follow_up_reason": data.get("follow_up_reason"),
+        "follow_up_set_by": data.get("follow_up_set_by"),
+        "condition_notes": data.get("condition_notes"),
+        "property_address": data.get("property_address"),
+        "bedrooms": data.get("bedrooms"),
+        "bathrooms": data.get("bathrooms"),
+        "square_footage": data.get("square_footage"),
+        "year_built": data.get("year_built"),
+        "lead_source": data.get("lead_source"),
+    }
+
+    if seller_data:
+        offer_history = seller_data.get("offer_history") or []
+        if offer_amount:
+            offer_history.append({
+                "amount": offer_amount,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            update_payload["offer_history"] = offer_history
+
     return update_payload
 
 @app.route("/webhook", methods=["POST"])
@@ -228,7 +247,6 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
     update_payload = generate_update_payload(data, seller_data or {}, conversation_memory["history"], call_summary, offer_amount)
-
     update_seller_memory(phone_number, update_payload)
 
     return jsonify({
@@ -247,6 +265,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
