@@ -1,57 +1,52 @@
 # memory_summarizer.py
 
-import os
 from openai import OpenAI
+import os
 from dotenv import load_dotenv
-from datetime import datetime
 
-# Load environment variables
 load_dotenv()
-openai_api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai_api_key)
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-RECENT_TURNS_TO_KEEP = 6
+# How many most recent GPT-user turns to keep
+RECENT_TURNS_TO_KEEP = 4
 
 def summarize_and_trim_memory(phone_number, memory):
     """
-    Summarizes older messages in memory and returns trimmed memory + summary blob for Supabase.
+    Summarizes all but the last N turns of the conversation and trims memory.
+    Returns a trimmed memory list and the new summary string.
     """
-    if len(memory) <= RECENT_TURNS_TO_KEEP:
+    if not memory:
         return memory, None
+
+    # Isolate only the seller (user) messages
+    user_messages = [m["content"] for m in memory if m["role"] == "user"]
+    assistant_messages = [m["content"] for m in memory if m["role"] == "assistant"]
+
+    # Exclude the last N turns from summary
+    if len(user_messages) < RECENT_TURNS_TO_KEEP:
+        return memory, None
+
+    summary_input = "\n".join(user_messages[:-RECENT_TURNS_TO_KEEP])
+    assistant_context = "\n".join(assistant_messages[:-RECENT_TURNS_TO_KEEP])
+
+    prompt = [
+        {"role": "system", "content": "You are summarizing a real estate seller conversation. Highlight key points like motivation, condition, timeline, and pricing."},
+        {"role": "user", "content": summary_input + "\n\n" + assistant_context}
+    ]
 
     try:
-        user_messages = [m["content"] for m in memory if m["role"] == "user"][:-RECENT_TURNS_TO_KEEP]
-        assistant_messages = [m["content"] for m in memory if m["role"] == "assistant"][:-RECENT_TURNS_TO_KEEP]
-
-        combined = ""
-        for u, a in zip(user_messages, assistant_messages):
-            combined += f"Seller said: {u}\nAssistant replied: {a}\n"
-
-        messages = [
-            {"role": "system", "content": "Summarize this seller conversation, focusing on pricing, condition, timeline, and motivation."},
-            {"role": "user", "content": combined}
-        ]
-
         response = client.chat.completions.create(
             model="gpt-4",
-            messages=messages,
-            temperature=0.3
+            messages=prompt,
+            temperature=0.4
         )
-
-        summary = response.choices[0].message.content
-
-        # Create memory summary blob
-        summary_entry = {
-            "summary": summary,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-
-        # Return the last RECENT_TURNS_TO_KEEP turns + summary object
-        trimmed_memory = memory[-RECENT_TURNS_TO_KEEP:]
-        return trimmed_memory, summary_entry
-
+        summary = response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"[Summarizer Error] {e}")
-        return memory, None
+        summary = None
+
+    # Keep only the last N messages
+    trimmed_history = memory[-RECENT_TURNS_TO_KEEP * 2:]  # 2x for user + assistant pairs
+    return trimmed_history, summary
+
 
 
