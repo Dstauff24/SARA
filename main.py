@@ -25,27 +25,12 @@ index = pc.Index(pinecone_index_name)
 app = Flask(__name__)
 
 # Short-Term Memory
-conversation_memory = {"history": []}
+conversation_memory = {
+    "history": []
+}
 MEMORY_LIMIT = 5
 
-# Token Management
-
-def num_tokens_from_messages(messages, model="gpt-4"):
-    encoding = tiktoken.encoding_for_model(model)
-    tokens_per_message = 3
-    tokens_per_name = 1
-    num_tokens = 0
-    for message in messages:
-        num_tokens += tokens_per_message
-        for key, value in message.items():
-            num_tokens += len(encoding.encode(value))
-            if key == "name":
-                num_tokens += tokens_per_name
-    num_tokens += 3
-    return num_tokens
-
-# Tone and Intent Detection
-
+# Seller Tone Mapping
 tone_map = {
     "angry": ["this is ridiculous", "i’m pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -94,7 +79,19 @@ def detect_contradiction(seller_input, seller_data):
                 contradictions.append("condition_notes")
     return contradictions
 
-# Offer Calculation
+def num_tokens_from_messages(messages, model="gpt-4"):
+    encoding = tiktoken.encoding_for_model(model)
+    tokens_per_message = 3
+    tokens_per_name = 1
+    num_tokens = 0
+    for message in messages:
+        num_tokens += tokens_per_message
+        for key, value in message.items():
+            num_tokens += len(encoding.encode(value))
+            if key == "name":
+                num_tokens += tokens_per_name
+    num_tokens += 3
+    return num_tokens
 
 def calculate_investor_price(arv, repair_cost, target_roi):
     realtor_fees = arv * 0.06
@@ -103,15 +100,13 @@ def calculate_investor_price(arv, repair_cost, target_roi):
     max_price = arv - (realtor_fees + holding_costs + repair_cost + investor_profit)
     return round(max_price, 2)
 
-# Webhook
-
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
     seller_input = data.get("seller_input", "")
-    phone_number = data.get("phone_number")
     arv = data.get("arv")
     repair_cost = data.get("repair_cost")
+    phone_number = data.get("phone_number")
 
     if not seller_input or not phone_number:
         return jsonify({"error": "Missing required fields"}), 400
@@ -120,8 +115,9 @@ def webhook():
     seller_intent = detect_seller_intent(seller_input)
     seller_data = get_seller_memory(phone_number)
 
+    trimmed_memory, summary = summarize_and_trim_memory(phone_number, conversation_memory.get("history", []))
+    conversation_memory["history"] = trimmed_memory or []
     conversation_memory["history"].append({"role": "user", "content": seller_input})
-
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
@@ -142,16 +138,12 @@ def webhook():
             arv = float(arv)
             repair_cost = float(repair_cost)
             initial_offer = calculate_investor_price(arv, repair_cost, 0.30)
-            min_offer = calculate_investor_price(arv, repair_cost, 0.10)
-            investor_offer = f"Start at ${initial_offer}, negotiate up to ${min_offer}."
+            hard_cap_offer = calculate_investor_price(arv, repair_cost, 0.10)
+            investor_offer = f"Start at ${initial_offer}, cap at ${hard_cap_offer}."
             offer_amount = initial_offer
         except:
             pass
 
-    summary_history, trimmed_memory = summarize_and_trim_memory(phone_number, conversation_memory["history"])
-    conversation_memory["history"] = trimmed_memory
-
-    call_summary = summary_history[-1]["summary"] if summary_history else None
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
@@ -162,8 +154,6 @@ Use language like: "Once we agree on terms, we’ll verify condition — nothing
 
     system_prompt = f"""
 {contradiction_note}
-Previous Summary:
-{call_summary or 'No summary available.'}
 
 You are SARA, a sharp and emotionally intelligent real estate acquisitions expert.
 Seller Tone: {seller_tone}
@@ -199,19 +189,25 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
 
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
+    offer_history = seller_data.get("offer_history") if seller_data else []
+    if offer_amount:
+        offer_history = offer_history or []
+        offer_history.append({"amount": offer_amount, "timestamp": datetime.utcnow().isoformat()})
+
     update_payload = {
         "conversation_log": conversation_memory["history"],
-        "summary_history": summary_history,
-        "call_summary": call_summary,
+        "call_summary": summary,
+        "summary_history": summary,
         "asking_price": data.get("asking_price"),
-        "repair_cost": data.get("repair_cost"),
-        "estimated_arv": data.get("arv"),
+        "repair_cost": repair_cost,
+        "estimated_arv": arv,
         "last_offer_amount": offer_amount,
+        "offer_history": offer_history,
         "follow_up_date": data.get("follow_up_date"),
         "follow_up_reason": data.get("follow_up_reason"),
         "follow_up_set_by": data.get("follow_up_set_by"),
-        "condition_notes": data.get("condition_notes"),
         "property_address": data.get("property_address"),
+        "condition_notes": data.get("condition_notes"),
         "bedrooms": data.get("bedrooms"),
         "bathrooms": data.get("bathrooms"),
         "square_footage": data.get("square_footage"),
@@ -220,22 +216,13 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
         "phone_number": phone_number
     }
 
-    if seller_data:
-        offer_history = seller_data.get("offer_history") or []
-        if offer_amount:
-            offer_history.append({
-                "amount": offer_amount,
-                "timestamp": datetime.utcnow().isoformat()
-            })
-            update_payload["offer_history"] = offer_history
-
     update_seller_memory(phone_number, update_payload)
 
     return jsonify({
         "content": reply,
         "tone": seller_tone,
         "intent": seller_intent,
-        "summary": call_summary,
+        "summary": summary,
         "nepq_examples": top_pairs,
         "reasoning": investor_offer,
         "contradictions": contradictions
@@ -247,6 +234,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
