@@ -246,7 +246,14 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
     update_payload = generate_update_payload(data, seller_data or {}, conversation_memory["history"], call_summary, offer_amount)
-    update_seller_memory(phone_number, update_payload)
+    import pprint
+pp = pprint.PrettyPrinter(indent=2)
+
+print("🚨 DEBUG: Payload to Supabase:")
+pp.pprint(update_payload)
+
+update_seller_memory(phone_number, update_payload)
+
 
     return jsonify({
         "content": reply,
