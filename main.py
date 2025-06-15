@@ -111,6 +111,12 @@ def calculate_investor_price(arv, repair_cost, target_roi):
     max_price = arv - (realtor_fees + holding_costs + repair_cost + investor_profit)
     return round(max_price, 2)
 
+def merge_existing_data(existing, new_data):
+    for key, value in new_data.items():
+        if value not in [None, "", [], {}]:
+            existing[key] = value
+    return existing
+
 def generate_update_payload(data, seller_data, conversation_history, call_summary, offer_amount):
     summary_history = seller_data.get("summary_history")
     if isinstance(summary_history, str):
@@ -120,7 +126,6 @@ def generate_update_payload(data, seller_data, conversation_history, call_summar
             summary_history = []
     if not summary_history:
         summary_history = []
-
     summary_history.append({
         "timestamp": datetime.utcnow().isoformat(),
         "summary": call_summary
@@ -133,14 +138,15 @@ def generate_update_payload(data, seller_data, conversation_history, call_summar
             "timestamp": datetime.utcnow().isoformat()
         })
 
-    return {
+    payload = seller_data.copy()
+    updates = {
         "conversation_log": conversation_history,
         "call_summary": call_summary,
         "summary_history": summary_history,
         "asking_price": data.get("asking_price"),
         "repair_cost": data.get("repair_cost"),
         "estimated_arv": data.get("arv"),
-        "last_offer_amount": round(offer_amount, 2) if offer_amount else None,
+        "last_offer_amount": round(offer_amount, 2) if offer_amount else seller_data.get("last_offer_amount"),
         "offer_history": offer_history,
         "follow_up_date": data.get("follow_up_date"),
         "follow_up_reason": data.get("follow_up_reason"),
@@ -154,6 +160,7 @@ def generate_update_payload(data, seller_data, conversation_history, call_summar
         "square_footage": data.get("square_footage"),
         "year_built": data.get("year_built")
     }
+    return merge_existing_data(payload, updates)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -179,7 +186,6 @@ def webhook():
             input=[seller_input],
             model="text-embedding-3-small"
         ).data[0].embedding
-
         result = index.query(vector=vector, top_k=3, include_metadata=True)
         top_pairs = [match.metadata["response"] for match in result.matches]
     except:
@@ -207,8 +213,7 @@ You are a virtual wholesaling assistant. Do not push for in-person walkthroughs 
 Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
 """
 
-    system_prompt = f"""
-{contradiction_note}
+    system_prompt = f"""{contradiction_note}
 Previous Summary:
 {call_summary}
 
@@ -225,12 +230,10 @@ Embed the following NEPQ-style examples into your natural conversation:
 {"; ".join(top_pairs) if top_pairs else "No NEPQ matches returned."}
 
 Avoid talking about ROI %. Frame our position in terms of real costs and risk.
-Max 3 total counteroffers. Sound human, strategic, and calm.
-"""
+Max 3 total counteroffers. Sound human, strategic, and calm."""
 
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(conversation_memory["history"])
-
     while num_tokens_from_messages(messages) > 3000:
         messages.pop(1)
 
@@ -245,12 +248,10 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
         return jsonify({"error": str(e)}), 500
 
     conversation_memory["history"].append({"role": "assistant", "content": reply})
-
     update_payload = generate_update_payload(data, seller_data or {}, conversation_memory["history"], call_summary, offer_amount)
 
-    # Logging for debugging
     print("🚨 DEBUG: Payload to Supabase:")
-    pprint.pprint(update_payload)
+    pprint.PrettyPrinter(indent=2).pprint(update_payload)
 
     update_seller_memory(phone_number, update_payload)
 
@@ -270,16 +271,3 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
-
-
-
-
-
-
-
-
-
-
-
-
-
