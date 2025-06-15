@@ -6,6 +6,7 @@ from pinecone import Pinecone
 import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
 from datetime import datetime
+import json
 
 # Load environment variables
 load_dotenv()
@@ -27,7 +28,7 @@ conversation_memory = {
 }
 MEMORY_LIMIT = 5
 
-# Tone map
+# Seller Tone Mapping
 tone_map = {
     "angry": ["this is ridiculous", "i’m pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -109,39 +110,48 @@ def calculate_investor_price(arv, repair_cost, target_roi):
     max_price = arv - (realtor_fees + holding_costs + repair_cost + investor_profit)
     return round(max_price, 2)
 
-def generate_update_payload(data, seller_data, history, summary, offer_amount):
-    summary_history = seller_data.get("summary_history") or []
+def generate_update_payload(data, seller_data, conversation_history, call_summary, offer_amount):
+    summary_history = seller_data.get("summary_history")
+    if isinstance(summary_history, str):
+        try:
+            summary_history = json.loads(summary_history)
+        except:
+            summary_history = []
+    if not summary_history:
+        summary_history = []
+
     summary_history.append({
-        "summary": summary,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
+        "summary": call_summary
     })
 
     offer_history = seller_data.get("offer_history") or []
     if offer_amount:
         offer_history.append({
-            "amount": offer_amount,
+            "amount": round(offer_amount, 2),
             "timestamp": datetime.utcnow().isoformat()
         })
 
     return {
-        "conversation_log": history,
-        "call_summary": summary,
+        "conversation_log": conversation_history,
+        "call_summary": call_summary,
         "summary_history": summary_history,
-        "asking_price": data.get("asking_price") or seller_data.get("asking_price"),
-        "repair_cost": data.get("repair_cost") or seller_data.get("repair_cost"),
-        "estimated_arv": data.get("arv") or seller_data.get("estimated_arv"),
-        "last_offer_amount": offer_amount or seller_data.get("last_offer_amount"),
-        "follow_up_date": data.get("follow_up_date") or seller_data.get("follow_up_date"),
-        "follow_up_reason": data.get("follow_up_reason") or seller_data.get("follow_up_reason"),
-        "follow_up_set_by": data.get("follow_up_set_by") or seller_data.get("follow_up_set_by"),
-        "property_address": data.get("property_address") or seller_data.get("property_address"),
-        "condition_notes": data.get("condition_notes") or seller_data.get("condition_notes"),
-        "bedrooms": data.get("bedrooms") or seller_data.get("bedrooms"),
-        "bathrooms": data.get("bathrooms") or seller_data.get("bathrooms"),
-        "square_footage": data.get("square_footage") or seller_data.get("square_footage"),
-        "year_built": data.get("year_built") or seller_data.get("year_built"),
-        "lead_source": data.get("lead_source") or seller_data.get("lead_source"),
-        "offer_history": offer_history
+        "asking_price": data.get("asking_price"),
+        "repair_cost": data.get("repair_cost"),
+        "estimated_arv": data.get("arv"),
+        "last_offer_amount": round(offer_amount, 2) if offer_amount else None,
+        "offer_history": offer_history,
+        "follow_up_date": data.get("follow_up_date"),
+        "follow_up_reason": data.get("follow_up_reason"),
+        "follow_up_set_by": data.get("follow_up_set_by"),
+        "phone_number": data.get("phone_number"),
+        "property_address": data.get("property_address"),
+        "condition_notes": data.get("condition_notes"),
+        "lead_source": data.get("lead_source"),
+        "bedrooms": data.get("bedrooms"),
+        "bathrooms": data.get("bathrooms"),
+        "square_footage": data.get("square_footage"),
+        "year_built": data.get("year_built")
     }
 
 @app.route("/webhook", methods=["POST"])
@@ -183,7 +193,7 @@ def webhook():
             initial_offer = calculate_investor_price(arv, repair_cost, 0.30)
             min_offer = calculate_investor_price(arv, repair_cost, 0.15)
             investor_offer = f"Start at ${initial_offer}, negotiate up to ${min_offer}."
-            offer_amount = initial_offer
+            offer_amount = min_offer
         except:
             pass
 
@@ -248,25 +258,13 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
         "contradictions": contradictions
     })
 
-# New GET Route for Testing
-@app.route("/seller_memory", methods=["GET"])
-def get_seller_data():
-    phone_number = request.args.get("phone_number")
-    if not phone_number:
-        return jsonify({"error": "Missing phone number"}), 400
-
-    seller_data = get_seller_memory(phone_number)
-    if not seller_data:
-        return jsonify({"message": "No seller data found for this number"}), 404
-
-    return jsonify(seller_data)
-
 @app.route("/", methods=["GET"])
 def index():
     return "✅ SARA Webhook is running!"
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
