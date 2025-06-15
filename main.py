@@ -7,6 +7,7 @@ import tiktoken
 from seller_memory_service import get_seller_memory, update_seller_memory
 from datetime import datetime
 import json
+import pprint
 
 # Load environment variables
 load_dotenv()
@@ -246,14 +247,12 @@ Max 3 total counteroffers. Sound human, strategic, and calm.
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
     update_payload = generate_update_payload(data, seller_data or {}, conversation_memory["history"], call_summary, offer_amount)
-    import pprint
-pp = pprint.PrettyPrinter(indent=2)
 
-print("🚨 DEBUG: Payload to Supabase:")
-pp.pprint(update_payload)
+    # Logging for debugging
+    print("🚨 DEBUG: Payload to Supabase:")
+    pprint.pprint(update_payload)
 
-update_seller_memory(phone_number, update_payload)
-
+    update_seller_memory(phone_number, update_payload)
 
     return jsonify({
         "content": reply,
@@ -271,6 +270,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
