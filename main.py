@@ -205,8 +205,10 @@ def webhook():
     contradictions = detect_contradiction(seller_input, seller_data)
     contradiction_note = f"⚠️ Seller contradiction(s) noted: {', '.join(contradictions)}." if contradictions else ""
 
-    walkthrough_logic = """You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
-Use language like: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now.""""
+    walkthrough_logic = """
+You are a virtual wholesaling assistant. Do not push for in-person walkthroughs unless final steps are reached.
+Use language like: 'Once we agree on terms, we’ll verify condition — nothing for you to worry about now.'
+"""
 
     system_prompt = f"""
 {contradiction_note}
