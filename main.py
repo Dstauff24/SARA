@@ -132,6 +132,33 @@ def detect_strategy_flags(text, arv, repair_cost, asking_price):
         flags.append("needs_agent_follow_up")
     return flags
 
+def calculate_lead_score(motivation, timeline, tone, intent):
+    score = 0
+    score += min(max(motivation, 0), 10) * 4
+    if timeline == "ASAP":
+        score += 25
+    elif timeline == "30 days":
+        score += 15
+    elif timeline == "90+ days":
+        score += 5
+    high = ["motivated", "friendly"]
+    mid = ["direct", "curious", "hesitant"]
+    low = ["cold", "withdrawn", "angry", "skeptical"]
+    if tone in high:
+        score += 20
+    elif tone in mid:
+        score += 10
+    elif tone in low:
+        score += 0
+    if intent == "distressed":
+        score += 15
+    elif intent in ["landlord", "on_fence"]:
+        score += 10
+    elif intent == "cold":
+        score += 0
+    else:
+        score += 5
+    return min(score, 100)
 def extract_asking_price(text):
     matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
     try:
@@ -190,7 +217,7 @@ def num_tokens_from_messages(messages, model="gpt-4"):
             total += len(encoding.encode(v))
     return total
 
-def generate_update_payload(data, memory, history, summary, verbal, min_offer, max_offer):
+def generate_update_payload(data, memory, history, summary, verbal, min_offer, max_offer, extra_fields):
     summary_history = memory.get("summary_history", [])
     if isinstance(summary_history, str):
         try:
@@ -209,17 +236,10 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
             "timestamp": datetime.utcnow().isoformat()
         })
 
+    existing = memory or {}
     asking_price = data.get("asking_price") or extract_asking_price(data.get("seller_input", ""))
     condition_notes = data.get("condition_notes") or extract_condition_notes(data.get("seller_input", ""))
-    motivation_score = extract_motivation_score(data.get("seller_input", ""))
-    personality_tag = extract_personality_tag(data.get("seller_input", ""))
-    timeline_to_sell = extract_timeline(data.get("seller_input", ""))
-    lead_status = determine_lead_status(motivation_score, timeline_to_sell)
-    next_follow_up_date = calculate_follow_up_date(lead_status)
-    contradiction_flags = list(set((memory.get("contradiction_flags") or []) + detect_contradictions(data.get("seller_input", ""), memory.get("conversation_log", ""))))
-    strategy_flags = list(set((memory.get("strategy_flags") or []) + detect_strategy_flags(data.get("seller_input", ""), data.get("estimated_arv"), data.get("repair_cost"), asking_price)))
 
-    existing = memory or {}
     return {
         "phone_number": data.get("phone_number"),
         "conversation_log": history,
@@ -233,8 +253,8 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "repair_cost": data.get("repair_cost") or existing.get("repair_cost"),
         "estimated_arv": data.get("estimated_arv") or existing.get("estimated_arv"),
         "condition_notes": condition_notes or existing.get("condition_notes"),
-        "follow_up_date": next_follow_up_date or existing.get("follow_up_date"),
-        "follow_up_reason": data.get("follow_up_reason") or existing.get("follow_up_reason"),
+        "follow_up_date": extra_fields.get("follow_up_date") or existing.get("follow_up_date"),
+        "follow_up_reason": extra_fields.get("follow_up_reason") or existing.get("follow_up_reason"),
         "follow_up_set_by": data.get("follow_up_set_by") or existing.get("follow_up_set_by"),
         "property_address": data.get("property_address") or existing.get("property_address"),
         "lead_source": data.get("lead_source") or existing.get("lead_source"),
@@ -243,12 +263,13 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "bathrooms": data.get("bathrooms") or existing.get("bathrooms"),
         "year_built": data.get("year_built") or existing.get("year_built"),
         "conversation_stage": existing.get("conversation_stage", "Introduction + Rapport"),
-        "motivation_score": motivation_score,
-        "personality_tag": personality_tag,
-        "timeline_to_sell": timeline_to_sell,
-        "contradiction_flags": contradiction_flags,
-        "lead_status": lead_status,
-        "strategy_flags": strategy_flags
+        "motivation_score": extra_fields.get("motivation_score"),
+        "timeline_to_sell": extra_fields.get("timeline_to_sell"),
+        "personality_tag": extra_fields.get("personality_tag"),
+        "lead_status": extra_fields.get("lead_status"),
+        "lead_score": extra_fields.get("lead_score"),
+        "strategy_flags": extra_fields.get("strategy_flags"),
+        "contradictions": extra_fields.get("contradictions")
     }
 
 @app.route("/webhook", methods=["POST"])
@@ -266,6 +287,17 @@ def webhook():
 
     tone = detect_tone(seller_input)
     intent = detect_seller_intent(seller_input)
+    motivation_score = extract_motivation_score(seller_input)
+    timeline = extract_timeline(seller_input)
+    personality = extract_personality_tag(seller_input)
+    contradictions = detect_contradictions(seller_input, str(memory.get("conversation_log", "")))
+    arv = data.get("estimated_arv") or memory.get("estimated_arv")
+    repair = data.get("repair_cost") or memory.get("repair_cost")
+    asking_price = extract_asking_price(seller_input) or memory.get("asking_price")
+    strategy_flags = detect_strategy_flags(seller_input, arv, repair, asking_price)
+    lead_status = determine_lead_status(motivation_score, timeline)
+    follow_up_date = calculate_follow_up_date(lead_status)
+    lead_score = calculate_lead_score(motivation_score, timeline, tone, intent)
 
     try:
         embed = client.embeddings.create(input=[seller_input], model="text-embedding-3-small").data[0].embedding
@@ -274,51 +306,53 @@ def webhook():
     except:
         top_examples = []
 
-    arv = data.get("estimated_arv") or memory.get("estimated_arv")
-    repair = data.get("repair_cost") or memory.get("repair_cost")
     min_offer = calculate_offer(arv, repair, 0.30) if arv and repair else None
     max_offer = calculate_offer(arv, repair, 0.15) if arv and repair else None
-
     summary = summarize_messages([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
 
     system_prompt = f"""
-You are SARA, a smart, calm, and emotionally intelligent acquisitions expert.
-Seller tone: {tone}
-Seller intent: {intent}
-Walkthrough: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
-Use this negotiation range: Min Offer = ${min_offer}, Max Offer = ${max_offer}
-NEPQ context: {"; ".join(top_examples) if top_examples else "No NEPQ examples found."}
-Avoid mentioning ROI %. Emphasize cost, condition, and risk.
+You are SARA, a calm, smart acquisitions expert.
+Tone: {tone}, Intent: {intent}, Personality: {personality}
+Use this negotiation range: Min ${min_offer} — Max ${max_offer}
+NEPQ: {"; ".join(top_examples) if top_examples else "None found"}
+Avoid technical language. Focus on simplicity, certainty, and seller value.
 """
 
     messages = [{"role": "system", "content": system_prompt}] + conversation_memory["history"]
     while num_tokens_from_messages(messages) > 3000:
         messages.pop(1)
 
-    response = client.chat.completions.create(model="gpt-4", messages=messages, temperature=0.7)
-    reply = response.choices[0].message.content
+    reply = client.chat.completions.create(model="gpt-4", messages=messages, temperature=0.7).choices[0].message.content
     conversation_memory["history"].append({"role": "assistant", "content": reply})
-
-    asking_price = extract_asking_price(seller_input)
     verbal_offer = extract_offer_from_reply(reply, asking_price)
-    timeline_to_sell = extract_timeline(seller_input)
-    lead_status = determine_lead_status(extract_motivation_score(seller_input), timeline_to_sell)
-    suggestion = follow_up_suggestion(lead_status, timeline_to_sell)
-    if suggestion:
-        reply += f"\n\n{suggestion}"
 
-    payload = generate_update_payload(data, memory or {}, conversation_memory["history"], summary, verbal_offer, min_offer, max_offer)
+    extras = {
+        "motivation_score": motivation_score,
+        "timeline_to_sell": timeline,
+        "personality_tag": personality,
+        "lead_status": lead_status,
+        "lead_score": lead_score,
+        "strategy_flags": strategy_flags,
+        "contradictions": contradictions,
+        "follow_up_date": follow_up_date,
+        "follow_up_reason": follow_up_suggestion(lead_status, timeline)
+    }
+
+    payload = generate_update_payload(data, memory or {}, conversation_memory["history"], summary, verbal_offer, min_offer, max_offer, extras)
     update_seller_memory(phone, payload)
 
     return jsonify({
         "content": reply,
         "tone": tone,
         "intent": intent,
+        "lead_score": lead_score,
         "summary": summary,
         "nepq_examples": top_examples,
         "min_offer": min_offer,
         "max_offer": max_offer,
-        "verbal_offer": verbal_offer
+        "verbal_offer": verbal_offer,
+        "strategy_flags": strategy_flags,
+        "lead_status": lead_status
     })
 
 @app.route("/", methods=["GET"])
@@ -327,6 +361,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
