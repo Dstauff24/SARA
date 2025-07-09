@@ -170,7 +170,7 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
     condition_notes = data.get("condition_notes") or extract_condition_notes(data.get("seller_input", ""))
     strategy_flags = list(set(memory.get("strategy_flags", []) + get_strategy_flags(data.get("seller_input", ""), memory.get("estimated_arv"), memory.get("repair_cost"), asking_price)))
 
-    next_follow_up = memory.get("follow_up_date")
+    next_follow_up = memory.get("next_follow_up_date")
     if not next_follow_up:
         next_follow_up = (datetime.utcnow() + timedelta(days=7)).date().isoformat()
 
@@ -188,7 +188,7 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "repair_cost": data.get("repair_cost") or existing.get("repair_cost"),
         "estimated_arv": data.get("estimated_arv") or existing.get("estimated_arv"),
         "condition_notes": condition_notes or existing.get("condition_notes"),
-        "follow_up_date": next_follow_up,
+        "next_follow_up_date": next_follow_up,
         "follow_up_reason": "Suggested from tone/intent" if not memory.get("follow_up_reason") else memory.get("follow_up_reason"),
         "follow_up_set_by": "system" if not memory.get("follow_up_set_by") else memory.get("follow_up_set_by"),
         "property_address": data.get("property_address") or existing.get("property_address"),
