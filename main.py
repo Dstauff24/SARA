@@ -31,122 +31,6 @@ tone_map = {
     "direct": ["how much", "what’s the offer"],
     "neutral": []
 }
-
-def detect_tone(text):
-    lowered = text.lower()
-    for tone, keywords in tone_map.items():
-        if any(kw in lowered for kw in keywords):
-            return tone
-    return "neutral"
-
-def detect_seller_intent(text):
-    text = text.lower()
-    if any(kw in text for kw in ["how much", "offer", "price"]):
-        return "price_sensitive"
-    if any(kw in text for kw in ["foreclosure", "behind", "bank"]):
-        return "distressed"
-    if any(kw in text for kw in ["maybe", "thinking", "not sure"]):
-        return "on_fence"
-    if any(kw in text for kw in ["stop calling", "not interested"]):
-        return "cold"
-    if any(kw in text for kw in ["vacant", "tenant", "rented"]):
-        return "landlord"
-    return "general_inquiry"
-
-def extract_asking_price(text):
-    matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
-    try:
-        return int(matches[0]) if matches else None
-    except:
-        return None
-
-def extract_condition_notes(text):
-    notes = []
-    if "roof" in text.lower():
-        notes.append("roof mentioned")
-    if "hvac" in text.lower():
-        notes.append("hvac mentioned")
-    if "kitchen" in text.lower():
-        notes.append("kitchen updates")
-    return ", ".join(notes) if notes else None
-
-def extract_offer_from_reply(text, asking_price=None):
-    if not text:
-        return None
-    cleaned_text = text.replace(',', '')
-    matches = re.findall(r'\$?\s?(\d{4,7})', cleaned_text)
-    try:
-        amounts = [int(m) for m in matches]
-        if asking_price:
-            amounts = [a for a in amounts if abs(a - asking_price) > 100]
-        return amounts[0] if amounts else None
-    except:
-        return None
-
-def summarize_messages(messages):
-    prompt = [
-        {"role": "system", "content": "Summarize key points like motivation, condition, timeline, pricing. Be natural."},
-        {"role": "user", "content": "\n".join(messages)}
-    ]
-    return client.chat.completions.create(
-        model="gpt-4", messages=prompt, temperature=0.5
-    ).choices[0].message.content
-
-def calculate_offer(arv, repair_cost, roi):
-    try:
-        arv, repair_cost = float(arv), float(repair_cost)
-        fees = arv * 0.06
-        hold = 0.01 * (arv - repair_cost) * 3
-        profit = roi * (arv - repair_cost)
-        return round(arv - (fees + hold + repair_cost + profit), 2)
-    except:
-        return None
-
-def num_tokens_from_messages(messages, model="gpt-4"):
-    encoding = tiktoken.encoding_for_model(model)
-    total = 3
-    for m in messages:
-        total += 3
-        for k, v in m.items():
-            total += len(encoding.encode(v))
-    return total
-
-def detect_contradictions(current_input, convo_log):
-    contradictions = []
-    if "asap" in current_input.lower() and "wait" in convo_log.lower():
-        contradictions.append("Timeline inconsistency")
-    if "turnkey" in current_input.lower() and any(term in current_input.lower() for term in ["kitchen", "roof", "hvac"]):
-        contradictions.append("Condition mismatch")
-    return contradictions
-
-def get_strategy_flags(text, arv=None, repair_cost=None, asking=None):
-    text = text.lower()
-    flags = []
-    if any(word in text for word in ["mortgage", "monthly", "payment", "rent"]):
-        flags.append("creative_finance")
-    if any(word in text for word in ["list", "realtor", "zillow", "market value"]):
-        flags.append("needs_agent_follow_up")
-    try:
-        if arv and repair_cost and asking:
-            current_val = float(arv) - float(repair_cost)
-            if float(asking) <= (current_val * 0.9 - 30000):
-                flags.append("novation_candidate")
-    except:
-        pass
-    return flags
-
-def score_lead(tone, intent):
-    tone_weights = {
-        "motivated": 4, "urgent": 3, "emotional": 2,
-        "hesitant": 1, "friendly": 1, "direct": 2,
-        "skeptical": -1, "withdrawn": -2, "angry": -3
-    }
-    intent_weights = {
-        "price_sensitive": 1, "distressed": 3,
-        "on_fence": 0, "cold": -2, "landlord": 1
-    }
-    return max(0, min(10, tone_weights.get(tone, 0) + intent_weights.get(intent, 0)))
-
 def generate_update_payload(data, memory, history, summary, verbal, min_offer, max_offer):
     summary_history = memory.get("summary_history", [])
     if isinstance(summary_history, str):
@@ -186,6 +70,7 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "max_offer_amount": max_offer or existing.get("max_offer_amount"),
         "asking_price": asking_price or existing.get("asking_price"),
         "repair_cost": data.get("repair_cost") or existing.get("repair_cost"),
+        "repair_reason": data.get("repair_reason") or existing.get("repair_reason"),  # ✅ NEW FIELD
         "estimated_arv": data.get("estimated_arv") or existing.get("estimated_arv"),
         "condition_notes": condition_notes or existing.get("condition_notes"),
         "next_follow_up_date": next_follow_up,
@@ -201,6 +86,121 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "strategy_flags": strategy_flags,
         "lead_score": score_lead(data.get("tone", ""), data.get("intent", ""))
     }
+def detect_tone(text):
+    lowered = text.lower()
+    for tone, keywords in tone_map.items():
+        if any(kw in lowered for kw in keywords):
+            return tone
+    return "neutral"
+
+def detect_seller_intent(text):
+    text = text.lower()
+    if any(kw in text for kw in ["how much", "offer", "price"]):
+        return "price_sensitive"
+    if any(kw in text for kw in ["foreclosure", "behind", "bank"]):
+        return "distressed"
+    if any(kw in text for kw in ["maybe", "thinking", "not sure"]):
+        return "on_fence"
+    if any(kw in text for kw in ["stop calling", "not interested"]):
+        return "cold"
+    if any(kw in text for kw in ["vacant", "tenant", "rented"]):
+        return "landlord"
+    return "general_inquiry"
+
+def detect_system_flags(text):
+    lowered = text.lower()
+    system_flags = []
+    repair_indicators = [
+        ("roof", ["leak", "old", "bad", "replace", "issues", "problem", "not sure"]),
+        ("hvac", ["not working", "old", "no ac", "broken", "needs", "unsure"]),
+        ("plumbing", ["leak", "pipes", "bad", "old", "replace"]),
+        ("electrical", ["rewire", "outlets", "old", "breaker", "unsafe"]),
+        ("foundation", ["crack", "settle", "issue", "sinking", "problem"])
+    ]
+    for system, red_flags in repair_indicators:
+        if system in lowered:
+            for flag in red_flags:
+                if flag in lowered:
+                    system_flags.append(system)
+                    break
+    return system_flags
+
+def estimate_repair_cost(memory, tone, text):
+    sqft = memory.get("square_footage")
+    try:
+        sqft = int(sqft)
+    except:
+        sqft = 1200
+
+    tone = tone or "neutral"
+    lowered = text.lower()
+    is_vague = any(phrase in lowered for phrase in ["great shape", "just needs paint", "just cosmetic", "a little touching up"])
+    is_detailed = any(phrase in lowered for phrase in ["new roof", "new hvac", "remodeled", "renovated", "fully updated"])
+    year_built = memory.get("year_built")
+    try:
+        is_newer = int(year_built) >= 2000
+    except:
+        is_newer = False
+
+    if is_detailed and is_newer:
+        base_cost = 20 * sqft
+        reason = "Used light rehab estimate due to detailed upgrades and newer build."
+    else:
+        base_cost = 35 * sqft
+        reason = "Defaulted to medium rehab + buffer due to vague or incomplete details."
+
+    system_flags = detect_system_flags(text)
+    system_cost = min(len(system_flags), 2) * 7000
+    total_cost = (base_cost + system_cost) * 1.10
+
+    return round(total_cost), reason
+def calculate_offer(arv, repair_cost, roi):
+    try:
+        arv, repair_cost = float(arv), float(repair_cost)
+        fees = arv * 0.06
+        hold = 0.01 * (arv - repair_cost) * 3
+        profit = roi * (arv - repair_cost)
+        return round(arv - (fees + hold + repair_cost + profit), 2)
+    except:
+        return None
+
+def num_tokens_from_messages(messages, model="gpt-4"):
+    encoding = tiktoken.encoding_for_model(model)
+    total = 3
+    for m in messages:
+        total += 3
+        for k, v in m.items():
+            total += len(encoding.encode(v))
+    return total
+
+def summarize_messages(messages):
+    prompt = [
+        {"role": "system", "content": "Summarize key points like motivation, condition, timeline, pricing. Be natural."},
+        {"role": "user", "content": "\n".join(messages)}
+    ]
+    return client.chat.completions.create(
+        model="gpt-4", messages=prompt, temperature=0.5
+    ).choices[0].message.content
+
+def extract_asking_price(text):
+    matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
+    try:
+        return int(matches[0]) if matches else None
+    except:
+        return None
+
+def extract_offer_from_reply(text, asking_price=None):
+    if not text:
+        return None
+    cleaned_text = text.replace(',', '')
+    matches = re.findall(r'\$?\s?(\d{4,7})', cleaned_text)
+    try:
+        amounts = [int(m) for m in matches]
+        if asking_price:
+            amounts = [a for a in amounts if abs(a - asking_price) > 100]
+        return amounts[0] if amounts else None
+    except:
+        return None
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -210,17 +210,13 @@ def webhook():
     if not seller_input or not phone:
         return jsonify({"error": "Missing seller_input or phone_number"}), 400
 
-    memory = get_seller_memory(phone)
-    if memory is None:
-        memory = {}
-
+    memory = get_seller_memory(phone) or {}
     conversation_memory["history"].append({"role": "user", "content": seller_input})
     if len(conversation_memory["history"]) > MEMORY_LIMIT * 2:
         conversation_memory["history"] = conversation_memory["history"][-MEMORY_LIMIT * 2:]
 
     tone = detect_tone(seller_input)
     intent = detect_seller_intent(seller_input)
-    contradictions = detect_contradictions(seller_input, str(memory.get("conversation_log", "")))
 
     try:
         embed = client.embeddings.create(input=[seller_input], model="text-embedding-3-small").data[0].embedding
@@ -229,22 +225,29 @@ def webhook():
     except:
         top_examples = []
 
+    # Estimate repair cost conservatively if not provided
+    repair_cost = data.get("repair_cost") or memory.get("repair_cost")
+    repair_reason = memory.get("repair_reason")
+    if not repair_cost:
+        repair_cost, repair_reason = estimate_repair_cost(memory, tone, seller_input)
+
     arv = data.get("estimated_arv") or memory.get("estimated_arv")
-    repair = data.get("repair_cost") or memory.get("repair_cost")
-    min_offer = calculate_offer(arv, repair, 0.30) if arv and repair else None
-    max_offer = calculate_offer(arv, repair, 0.15) if arv and repair else None
+    min_offer = calculate_offer(arv, repair_cost, 0.30) if arv and repair_cost else None
+    max_offer = calculate_offer(arv, repair_cost, 0.15) if arv and repair_cost else None
 
     summary = summarize_messages([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
 
-    system_prompt = f"""
-You are SARA, a smart, calm, and emotionally intelligent acquisitions expert.
+    system_prompt = f'''
+You are SARA, a smart, calm, emotionally intelligent acquisitions expert.
 Seller tone: {tone}
 Seller intent: {intent}
-Walkthrough: "Once we agree on terms, we’ll verify condition — nothing for you to worry about now."
-Use this negotiation range: Min Offer = ${min_offer}, Max Offer = ${max_offer}
+Use this offer range: Min Offer = ${min_offer}, Max Offer = ${max_offer}
+Based on the seller input, we estimated repair costs to be ${repair_cost}.
+Reason: {repair_reason}
+Explain how you arrived at that estimate clearly during the repair review stage.
 NEPQ context: {"; ".join(top_examples) if top_examples else "No NEPQ examples found."}
-Avoid mentioning ROI %. Emphasize cost, condition, and risk.
-"""
+Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
+'''
 
     messages = [{"role": "system", "content": system_prompt}] + conversation_memory["history"]
     while num_tokens_from_messages(messages) > 3000:
@@ -257,16 +260,24 @@ Avoid mentioning ROI %. Emphasize cost, condition, and risk.
     asking_price = extract_asking_price(seller_input)
     verbal_offer = extract_offer_from_reply(reply, asking_price)
 
-    payload = generate_update_payload({
-        **data,
+    payload = {
+        "phone_number": phone,
+        "conversation_log": conversation_memory["history"],
+        "call_summary": summary,
+        "verbal_offer_amount": verbal_offer,
+        "min_offer_amount": min_offer,
+        "max_offer_amount": max_offer,
+        "asking_price": asking_price or memory.get("asking_price"),
+        "repair_cost": repair_cost,
+        "repair_reason": repair_reason,
+        "estimated_arv": arv,
         "tone": tone,
         "intent": intent
-    }, memory, conversation_memory["history"], summary, verbal_offer, min_offer, max_offer)
+    }
 
-    # 🧾 Debug log of the outgoing payload to Supabase
-    print("\n===== Payload being sent to Supabase =====")
+    print("\n==== Payload to Supabase ====")
     print(json.dumps(payload, indent=2, default=str))
-    print("==========================================\n")
+    print("=============================\n")
 
     update_seller_memory(phone, payload)
 
@@ -279,9 +290,8 @@ Avoid mentioning ROI %. Emphasize cost, condition, and risk.
         "min_offer": min_offer,
         "max_offer": max_offer,
         "verbal_offer": verbal_offer,
-        "contradictions": contradictions,
-        "strategy_flags": payload.get("strategy_flags"),
-        "lead_score": payload.get("lead_score")
+        "repair_cost": repair_cost,
+        "repair_reason": repair_reason
     })
 
 @app.route("/", methods=["GET"])
@@ -290,7 +300,6 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
-
 
 
 
