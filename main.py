@@ -52,7 +52,12 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
 
     asking_price = data.get("asking_price") or extract_asking_price(data.get("seller_input", ""))
     condition_notes = data.get("condition_notes") or extract_condition_notes(data.get("seller_input", ""))
-    strategy_flags = list(set(memory.get("strategy_flags", []) + get_strategy_flags(data.get("seller_input", ""), memory.get("estimated_arv"), memory.get("repair_cost"), asking_price)))
+    strategy_flags = list(set(memory.get("strategy_flags", []) + get_strategy_flags(
+        data.get("seller_input", ""),
+        memory.get("estimated_arv"),
+        memory.get("repair_cost"),
+        asking_price
+    )))
 
     next_follow_up = memory.get("next_follow_up_date")
     if not next_follow_up:
@@ -70,12 +75,13 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "max_offer_amount": max_offer or existing.get("max_offer_amount"),
         "asking_price": asking_price or existing.get("asking_price"),
         "repair_cost": data.get("repair_cost") or existing.get("repair_cost"),
-        "repair_reason": data.get("repair_reason") or existing.get("repair_reason"),  # ✅ NEW FIELD
+        "repair_reason": data.get("repair_reason") or existing.get("repair_reason"),  # ✅ New field for transparency
+        "system_flags": data.get("system_flags") or existing.get("system_flags"),    # ✅ Track which systems were flagged
         "estimated_arv": data.get("estimated_arv") or existing.get("estimated_arv"),
         "condition_notes": condition_notes or existing.get("condition_notes"),
         "next_follow_up_date": next_follow_up,
-        "follow_up_reason": "Suggested from tone/intent" if not memory.get("follow_up_reason") else memory.get("follow_up_reason"),
-        "follow_up_set_by": "system" if not memory.get("follow_up_set_by") else memory.get("follow_up_set_by"),
+        "follow_up_reason": memory.get("follow_up_reason") or "Suggested from tone/intent",
+        "follow_up_set_by": memory.get("follow_up_set_by") or "system",
         "property_address": data.get("property_address") or existing.get("property_address"),
         "lead_source": data.get("lead_source") or existing.get("lead_source"),
         "square_footage": data.get("square_footage") or existing.get("square_footage"),
