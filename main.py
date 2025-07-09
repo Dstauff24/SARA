@@ -6,6 +6,11 @@ from pinecone import Pinecone
 import tiktoken
 from datetime import datetime, timedelta
 from seller_memory_service import get_seller_memory, update_seller_memory
+import json
+
+# Later inside webhook()
+print("Payload being sent to Supabase:\n", json.dumps(payload, indent=2))
+update_seller_memory(phone, payload)
 
 # Load environment
 load_dotenv()
