@@ -4,7 +4,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
 import tiktoken
-from datetime import datetime
+from datetime import datetime, timedelta
 from seller_memory_service import get_seller_memory, update_seller_memory
 
 # Load environment
@@ -17,7 +17,7 @@ app = Flask(__name__)
 conversation_memory = {"history": []}
 MEMORY_LIMIT = 5
 
-# Tone & Intent Mapping
+# Tone mapping
 tone_map = {
     "angry": ["this is ridiculous", "pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -54,17 +54,16 @@ def detect_seller_intent(text):
         return "landlord"
     return "general_inquiry"
 
-# Intelligence Core Functions
-def extract_motivation_score(user_input: str) -> int:
-    lowered = user_input.lower()
+def extract_motivation_score(text):
+    lowered = text.lower()
     if any(kw in lowered for kw in ["asap", "right away", "urgent", "need to sell fast"]):
         return 9
     elif any(kw in lowered for kw in ["just looking", "no rush", "maybe later"]):
         return 2
     return 5
 
-def extract_personality_tag(user_input: str) -> str:
-    lowered = user_input.lower()
+def extract_personality_tag(text):
+    lowered = text.lower()
     if "i don’t trust" in lowered or "i don't trust" in lowered:
         return "skeptical"
     elif "fair deal" in lowered:
@@ -73,8 +72,8 @@ def extract_personality_tag(user_input: str) -> str:
         return "emotional"
     return "neutral"
 
-def extract_timeline(user_input: str) -> str:
-    lowered = user_input.lower()
+def extract_timeline(text):
+    lowered = text.lower()
     if "asap" in lowered or "right away" in lowered:
         return "ASAP"
     if "30 days" in lowered:
@@ -83,20 +82,40 @@ def extract_timeline(user_input: str) -> str:
         return "90+ days"
     return None
 
-def detect_contradictions(user_input: str, history: str) -> list:
+def detect_contradictions(text, history):
     flags = []
-    if "asap" in user_input.lower() and "waiting it out" in history.lower():
+    if "asap" in text.lower() and "waiting it out" in history.lower():
         flags.append("ASAP+Waiting")
-    if "no repairs" in user_input.lower() and "kitchen needs work" in history.lower():
+    if "no repairs" in text.lower() and "kitchen needs work" in history.lower():
         flags.append("NoRepairs+Kitchen")
     return flags
 
-def determine_lead_status(score: int, timeline: str) -> str:
+def determine_lead_status(score, timeline):
     if score >= 8 and timeline == "ASAP":
         return "hot"
     if score <= 3:
         return "cold"
     return "warm"
+
+def calculate_follow_up_date(lead_status):
+    today = datetime.utcnow()
+    delays = {
+        "hot": 2,
+        "warm": 7,
+        "cold": 30,
+        "needs_research": 14,
+        "dead": None
+    }
+    days = delays.get(lead_status)
+    return (today + timedelta(days=days)).isoformat() if days else None
+
+def follow_up_suggestion(lead_status, timeline):
+    if lead_status == "cold" or timeline in ["30 days", "90+ days"]:
+        return "Totally understand. Would it make sense for me to check back in a few weeks?"
+    if lead_status == "needs_research":
+        return "Sounds like there's still some figuring out to do — I can follow up in a couple weeks if that helps?"
+    return ""
+
 def extract_asking_price(text):
     matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
     try:
@@ -182,6 +201,7 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
     personality_tag = extract_personality_tag(data.get("seller_input", ""))
     timeline_to_sell = extract_timeline(data.get("seller_input", ""))
     lead_status = determine_lead_status(motivation_score, timeline_to_sell)
+    next_follow_up_date = calculate_follow_up_date(lead_status)
 
     existing = memory or {}
     return {
@@ -197,7 +217,7 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "repair_cost": data.get("repair_cost") or existing.get("repair_cost"),
         "estimated_arv": data.get("estimated_arv") or existing.get("estimated_arv"),
         "condition_notes": condition_notes or existing.get("condition_notes"),
-        "follow_up_date": data.get("follow_up_date") or existing.get("follow_up_date"),
+        "follow_up_date": next_follow_up_date or existing.get("follow_up_date"),
         "follow_up_reason": data.get("follow_up_reason") or existing.get("follow_up_reason"),
         "follow_up_set_by": data.get("follow_up_set_by") or existing.get("follow_up_set_by"),
         "property_address": data.get("property_address") or existing.get("property_address"),
@@ -264,6 +284,11 @@ Avoid mentioning ROI %. Emphasize cost, condition, and risk.
 
     asking_price = extract_asking_price(seller_input)
     verbal_offer = extract_offer_from_reply(reply, asking_price)
+    timeline_to_sell = extract_timeline(seller_input)
+    lead_status = determine_lead_status(extract_motivation_score(seller_input), timeline_to_sell)
+    suggestion = follow_up_suggestion(lead_status, timeline_to_sell)
+    if suggestion:
+        reply += f"\n\n{suggestion}"
 
     payload = generate_update_payload(data, memory or {}, conversation_memory["history"], summary, verbal_offer, min_offer, max_offer)
     update_seller_memory(phone, payload)
@@ -285,6 +310,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
