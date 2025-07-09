@@ -6,11 +6,6 @@ from pinecone import Pinecone
 import tiktoken
 from datetime import datetime, timedelta
 from seller_memory_service import get_seller_memory, update_seller_memory
-import json
-
-# Later inside webhook()
-print("Payload being sent to Supabase:\n", json.dumps(payload, indent=2))
-update_seller_memory(phone, payload)
 
 # Load environment
 load_dotenv()
@@ -115,6 +110,7 @@ def num_tokens_from_messages(messages, model="gpt-4"):
         for k, v in m.items():
             total += len(encoding.encode(v))
     return total
+
 def detect_contradictions(current_input, convo_log):
     contradictions = []
     if "asap" in current_input.lower() and "wait" in convo_log.lower():
@@ -126,7 +122,6 @@ def detect_contradictions(current_input, convo_log):
 def get_strategy_flags(text, arv=None, repair_cost=None, asking=None):
     text = text.lower()
     flags = []
-
     if any(word in text for word in ["mortgage", "monthly", "payment", "rent"]):
         flags.append("creative_finance")
     if any(word in text for word in ["list", "realtor", "zillow", "market value"]):
@@ -204,7 +199,7 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "year_built": data.get("year_built") or existing.get("year_built"),
         "conversation_stage": existing.get("conversation_stage", "Introduction + Rapport"),
         "strategy_flags": strategy_flags,
-        "lead_score": score_lead(data.get("tone", ""), data.get("intent", "")),
+        "lead_score": score_lead(data.get("tone", ""), data.get("intent", ""))
     }
 
 @app.route("/webhook", methods=["POST"])
@@ -267,6 +262,11 @@ Avoid mentioning ROI %. Emphasize cost, condition, and risk.
         "tone": tone,
         "intent": intent
     }, memory, conversation_memory["history"], summary, verbal_offer, min_offer, max_offer)
+
+    # 🧾 Debug log of the outgoing payload to Supabase
+    print("\n===== Payload being sent to Supabase =====")
+    print(json.dumps(payload, indent=2, default=str))
+    print("==========================================\n")
 
     update_seller_memory(phone, payload)
 
