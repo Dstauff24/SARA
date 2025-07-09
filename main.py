@@ -17,7 +17,6 @@ app = Flask(__name__)
 conversation_memory = {"history": []}
 MEMORY_LIMIT = 5
 
-# Tone mapping
 tone_map = {
     "angry": ["this is ridiculous", "pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -116,6 +115,23 @@ def follow_up_suggestion(lead_status, timeline):
         return "Sounds like there's still some figuring out to do — I can follow up in a couple weeks if that helps?"
     return ""
 
+def detect_strategy_flags(text, arv, repair_cost, asking_price):
+    flags = []
+    text = text.lower()
+    try:
+        arv = float(arv)
+        repair_cost = float(repair_cost)
+        novation_limit = (arv - repair_cost) * 0.9 - 30000
+        if asking_price and asking_price <= novation_limit:
+            flags.append("novation_candidate")
+    except:
+        pass
+    if any(kw in text for kw in ["mortgage", "payment", "monthly", "rent"]):
+        flags.append("creative_finance")
+    if any(kw in text for kw in ["listing", "full price", "market value"]):
+        flags.append("needs_agent_follow_up")
+    return flags
+
 def extract_asking_price(text):
     matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
     try:
@@ -195,13 +211,13 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
 
     asking_price = data.get("asking_price") or extract_asking_price(data.get("seller_input", ""))
     condition_notes = data.get("condition_notes") or extract_condition_notes(data.get("seller_input", ""))
-
-    contradiction_flags = list(set((memory.get("contradiction_flags") or []) + detect_contradictions(data.get("seller_input", ""), memory.get("conversation_log", ""))))
     motivation_score = extract_motivation_score(data.get("seller_input", ""))
     personality_tag = extract_personality_tag(data.get("seller_input", ""))
     timeline_to_sell = extract_timeline(data.get("seller_input", ""))
     lead_status = determine_lead_status(motivation_score, timeline_to_sell)
     next_follow_up_date = calculate_follow_up_date(lead_status)
+    contradiction_flags = list(set((memory.get("contradiction_flags") or []) + detect_contradictions(data.get("seller_input", ""), memory.get("conversation_log", ""))))
+    strategy_flags = list(set((memory.get("strategy_flags") or []) + detect_strategy_flags(data.get("seller_input", ""), data.get("estimated_arv"), data.get("repair_cost"), asking_price)))
 
     existing = memory or {}
     return {
@@ -231,7 +247,8 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "personality_tag": personality_tag,
         "timeline_to_sell": timeline_to_sell,
         "contradiction_flags": contradiction_flags,
-        "lead_status": lead_status
+        "lead_status": lead_status,
+        "strategy_flags": strategy_flags
     }
 
 @app.route("/webhook", methods=["POST"])
@@ -310,6 +327,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
