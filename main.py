@@ -17,6 +17,7 @@ app = Flask(__name__)
 conversation_memory = {"history": []}
 MEMORY_LIMIT = 5
 
+# Tone & Intent Mapping
 tone_map = {
     "angry": ["this is ridiculous", "pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -53,6 +54,49 @@ def detect_seller_intent(text):
         return "landlord"
     return "general_inquiry"
 
+# Intelligence Core Functions
+def extract_motivation_score(user_input: str) -> int:
+    lowered = user_input.lower()
+    if any(kw in lowered for kw in ["asap", "right away", "urgent", "need to sell fast"]):
+        return 9
+    elif any(kw in lowered for kw in ["just looking", "no rush", "maybe later"]):
+        return 2
+    return 5
+
+def extract_personality_tag(user_input: str) -> str:
+    lowered = user_input.lower()
+    if "i don’t trust" in lowered or "i don't trust" in lowered:
+        return "skeptical"
+    elif "fair deal" in lowered:
+        return "direct"
+    elif "been through" in lowered or "emotional" in lowered:
+        return "emotional"
+    return "neutral"
+
+def extract_timeline(user_input: str) -> str:
+    lowered = user_input.lower()
+    if "asap" in lowered or "right away" in lowered:
+        return "ASAP"
+    if "30 days" in lowered:
+        return "30 days"
+    if "90 days" in lowered or "3 months" in lowered:
+        return "90+ days"
+    return None
+
+def detect_contradictions(user_input: str, history: str) -> list:
+    flags = []
+    if "asap" in user_input.lower() and "waiting it out" in history.lower():
+        flags.append("ASAP+Waiting")
+    if "no repairs" in user_input.lower() and "kitchen needs work" in history.lower():
+        flags.append("NoRepairs+Kitchen")
+    return flags
+
+def determine_lead_status(score: int, timeline: str) -> str:
+    if score >= 8 and timeline == "ASAP":
+        return "hot"
+    if score <= 3:
+        return "cold"
+    return "warm"
 def extract_asking_price(text):
     matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
     try:
@@ -133,6 +177,12 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
     asking_price = data.get("asking_price") or extract_asking_price(data.get("seller_input", ""))
     condition_notes = data.get("condition_notes") or extract_condition_notes(data.get("seller_input", ""))
 
+    contradiction_flags = list(set((memory.get("contradiction_flags") or []) + detect_contradictions(data.get("seller_input", ""), memory.get("conversation_log", ""))))
+    motivation_score = extract_motivation_score(data.get("seller_input", ""))
+    personality_tag = extract_personality_tag(data.get("seller_input", ""))
+    timeline_to_sell = extract_timeline(data.get("seller_input", ""))
+    lead_status = determine_lead_status(motivation_score, timeline_to_sell)
+
     existing = memory or {}
     return {
         "phone_number": data.get("phone_number"),
@@ -156,7 +206,12 @@ def generate_update_payload(data, memory, history, summary, verbal, min_offer, m
         "bedrooms": data.get("bedrooms") or existing.get("bedrooms"),
         "bathrooms": data.get("bathrooms") or existing.get("bathrooms"),
         "year_built": data.get("year_built") or existing.get("year_built"),
-        "conversation_stage": existing.get("conversation_stage", "Introduction + Rapport")
+        "conversation_stage": existing.get("conversation_stage", "Introduction + Rapport"),
+        "motivation_score": motivation_score,
+        "personality_tag": personality_tag,
+        "timeline_to_sell": timeline_to_sell,
+        "contradiction_flags": contradiction_flags,
+        "lead_status": lead_status
     }
 
 @app.route("/webhook", methods=["POST"])
@@ -230,6 +285,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
+
 
 
 
