@@ -71,12 +71,27 @@ def update_seller_memory(phone_number: str, updates: dict):
         # Ensure phone number is included for upsert
         updates["phone_number"] = phone_number
 
+        # === DEBUG: Log the full payload going into Supabase ===
+        print("\n📤 Attempting Supabase Upsert...")
+        print(json.dumps(updates, indent=2, default=str))
+
         # Perform upsert with conflict resolution on phone_number
         response = supabase.table("seller_memory").upsert(updates, on_conflict="phone_number").execute()
+
+        # Log response details
+        if response.error:
+            print("\n❌ Supabase returned an error:")
+            print(response.error)
+        else:
+            print("✅ Supabase update successful.")
+            print(f"🔁 Response: {response.data}")
+
         return response
     except Exception as e:
-        print(f"[Supabase Error] Failed to update seller memory: {e}")
+        print("\n🚨 Exception during Supabase update")
+        print(str(e))
         return None
+
 
 
 
