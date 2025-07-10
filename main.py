@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-import os, re, json
+import os, re, json, requests
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
@@ -12,6 +12,7 @@ load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
 index = pc.Index(os.getenv("PINECONE_INDEX"))
+RENTCAST_API_KEY = os.getenv("RENTCAST_API_KEY")
 
 app = Flask(__name__)
 conversation_memory = {"history": []}
@@ -31,67 +32,39 @@ tone_map = {
     "direct": ["how much", "what’s the offer"],
     "neutral": []
 }
-def generate_update_payload(data, memory, history, summary, verbal, min_offer, max_offer):
-    summary_history = memory.get("summary_history", [])
-    if isinstance(summary_history, str):
-        try:
-            summary_history = json.loads(summary_history)
-        except:
-            summary_history = []
-    summary_history.append({
-        "timestamp": datetime.utcnow().isoformat(),
-        "summary": summary
-    })
 
-    offer_history = memory.get("offer_history", [])
-    if verbal:
-        offer_history.append({
-            "amount": verbal,
-            "timestamp": datetime.utcnow().isoformat()
-        })
+def get_property_valuation(address):
+    url = f"https://api.rentcast.io/v1/avm/value?address={address}"
+    headers = {"X-Api-Key": RENTCAST_API_KEY, "Accept": "application/json"}
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "estimated_arv": data.get("price"),
+                "valuation_range_low": data.get("priceRangeLow"),
+                "valuation_range_high": data.get("priceRangeHigh"),
+                "price_per_sqft": data.get("pricePerSqft"),
+                "arv_source": "RentCast"
+            }
+    except Exception as e:
+        print(f"[RentCast ARV Error] {e}")
+    return {}
 
-    asking_price = data.get("asking_price") or extract_asking_price(data.get("seller_input", ""))
-    condition_notes = data.get("condition_notes") or extract_condition_notes(data.get("seller_input", ""))
-    strategy_flags = list(set(memory.get("strategy_flags", []) + get_strategy_flags(
-        data.get("seller_input", ""),
-        memory.get("estimated_arv"),
-        memory.get("repair_cost"),
-        asking_price
-    )))
-
-    next_follow_up = memory.get("next_follow_up_date")
-    if not next_follow_up:
-        next_follow_up = (datetime.utcnow() + timedelta(days=7)).date().isoformat()
-
-    existing = memory or {}
-    return {
-        "phone_number": data.get("phone_number"),
-        "conversation_log": history,
-        "call_summary": summary,
-        "summary_history": summary_history,
-        "offer_history": offer_history,
-        "verbal_offer_amount": verbal or existing.get("verbal_offer_amount"),
-        "min_offer_amount": min_offer or existing.get("min_offer_amount"),
-        "max_offer_amount": max_offer or existing.get("max_offer_amount"),
-        "asking_price": asking_price or existing.get("asking_price"),
-        "repair_cost": data.get("repair_cost") or existing.get("repair_cost"),
-        "repair_reason": data.get("repair_reason") or existing.get("repair_reason"),  # ✅ New field for transparency
-        "system_flags": data.get("system_flags") or existing.get("system_flags"),    # ✅ Track which systems were flagged
-        "estimated_arv": data.get("estimated_arv") or existing.get("estimated_arv"),
-        "condition_notes": condition_notes or existing.get("condition_notes"),
-        "next_follow_up_date": next_follow_up,
-        "follow_up_reason": memory.get("follow_up_reason") or "Suggested from tone/intent",
-        "follow_up_set_by": memory.get("follow_up_set_by") or "system",
-        "property_address": data.get("property_address") or existing.get("property_address"),
-        "lead_source": data.get("lead_source") or existing.get("lead_source"),
-        "square_footage": data.get("square_footage") or existing.get("square_footage"),
-        "bedrooms": data.get("bedrooms") or existing.get("bedrooms"),
-        "bathrooms": data.get("bathrooms") or existing.get("bathrooms"),
-        "year_built": data.get("year_built") or existing.get("year_built"),
-        "conversation_stage": existing.get("conversation_stage", "Introduction + Rapport"),
-        "strategy_flags": strategy_flags,
-        "lead_score": score_lead(data.get("tone", ""), data.get("intent", ""))
-    }
+def get_rental_estimate(address):
+    url = f"https://api.rentcast.io/v1/avm/rent/long-term?address={address}"
+    headers = {"X-Api-Key": RENTCAST_API_KEY, "Accept": "application/json"}
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "estimated_rent": data.get("rent"),
+                "cap_rate": data.get("marketCapRate")
+            }
+    except Exception as e:
+        print(f"[RentCast Rent Error] {e}")
+    return {}
 def detect_tone(text):
     lowered = text.lower()
     for tone, keywords in tone_map.items():
@@ -160,6 +133,7 @@ def estimate_repair_cost(memory, tone, text):
     total_cost = (base_cost + system_cost) * 1.10
 
     return round(total_cost), reason
+
 def calculate_offer(arv, repair_cost, roi):
     try:
         arv, repair_cost = float(arv), float(repair_cost)
@@ -187,7 +161,6 @@ def summarize_messages(messages):
     return client.chat.completions.create(
         model="gpt-4", messages=prompt, temperature=0.5
     ).choices[0].message.content
-
 def extract_asking_price(text):
     matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
     try:
@@ -224,6 +197,14 @@ def webhook():
     tone = detect_tone(seller_input)
     intent = detect_seller_intent(seller_input)
 
+    # RentCast ARV + Rent if we have an address and no ARV yet
+    property_address = data.get("property_address") or memory.get("property_address")
+    if property_address and not memory.get("estimated_arv"):
+        valuation_data = get_property_valuation(property_address)
+        rental_data = get_rental_estimate(property_address)
+        memory.update({**valuation_data, **rental_data})
+        memory["property_address"] = property_address  # make sure it's stored
+
     try:
         embed = client.embeddings.create(input=[seller_input], model="text-embedding-3-small").data[0].embedding
         results = index.query(vector=embed, top_k=3, include_metadata=True)
@@ -231,13 +212,13 @@ def webhook():
     except:
         top_examples = []
 
-    # Estimate repair cost conservatively if not provided
+    # Conservative repair cost if not yet set
     repair_cost = data.get("repair_cost") or memory.get("repair_cost")
     repair_reason = memory.get("repair_reason")
     if not repair_cost:
         repair_cost, repair_reason = estimate_repair_cost(memory, tone, seller_input)
 
-    arv = data.get("estimated_arv") or memory.get("estimated_arv")
+    arv = memory.get("estimated_arv") or data.get("estimated_arv")
     min_offer = calculate_offer(arv, repair_cost, 0.30) if arv and repair_cost else None
     max_offer = calculate_offer(arv, repair_cost, 0.15) if arv and repair_cost else None
 
@@ -277,6 +258,13 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
         "repair_cost": repair_cost,
         "repair_reason": repair_reason,
         "estimated_arv": arv,
+        "valuation_range_low": memory.get("valuation_range_low"),
+        "valuation_range_high": memory.get("valuation_range_high"),
+        "price_per_sqft": memory.get("price_per_sqft"),
+        "estimated_rent": memory.get("estimated_rent"),
+        "cap_rate": memory.get("cap_rate"),
+        "arv_source": memory.get("arv_source"),
+        "property_address": property_address,
         "tone": tone,
         "intent": intent
     }
