@@ -271,25 +271,25 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
     asking_price = extract_asking_price(seller_input)
     verbal_offer = extract_offer_from_reply(reply, asking_price)
 
-    payload = {
+      payload = {
         "phone_number": phone,
         "conversation_log": conversation_memory["history"],
         "call_summary": summary,
-        "verbal_offer_amount": verbal_offer,
-        "min_offer_amount": min_offer,
-        "max_offer_amount": max_offer,
-        "asking_price": asking_price or memory.get("asking_price"),
-        "repair_cost": repair_cost,
+        "verbal_offer_amount": safe_number(verbal_offer),
+        "min_offer_amount": safe_number(min_offer),
+        "max_offer_amount": safe_number(max_offer),
+        "asking_price": safe_number(asking_price or memory.get("asking_price")),
+        "repair_cost": safe_number(repair_cost),
         "repair_reason": repair_reason,
-        "estimated_arv": arv,
+        "estimated_arv": safe_number(arv),
         "tone": tone,
         "intent": intent,
         "property_address": address,
-        "price_per_sqft": valuation_data.get("price_per_sqft"),
-        "valuation_range_low": valuation_data.get("valuation_range_low"),
-        "valuation_range_high": valuation_data.get("valuation_range_high"),
-        "estimated_rent": rent_data.get("estimated_rent"),
-        "cap_rate": rent_data.get("cap_rate"),
+        "price_per_sqft": safe_number(valuation_data.get("price_per_sqft")),
+        "valuation_range_low": safe_number(valuation_data.get("valuation_range_low")),
+        "valuation_range_high": safe_number(valuation_data.get("valuation_range_high")),
+        "estimated_rent": safe_number(rent_data.get("estimated_rent")),
+        "cap_rate": safe_number(rent_data.get("cap_rate")),
         "arv_source": valuation_data.get("arv_source")
     }
 
