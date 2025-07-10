@@ -3,11 +3,11 @@ import os, re, json, requests
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
-import tiktoken
 from datetime import datetime, timedelta
 from seller_memory_service import get_seller_memory, update_seller_memory
+import tiktoken
 
-# Load environment
+# === Load Environment ===
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
@@ -18,6 +18,49 @@ app = Flask(__name__)
 conversation_memory = {"history": []}
 MEMORY_LIMIT = 5
 
+def safe_number(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+def get_rentcast_valuation(address):
+    headers = {"X-API-Key": RENTCAST_API_KEY}
+    params = {"address": address}
+    url = "https://api.rentcast.io/v1/properties/valuations"
+
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "estimated_arv": safe_number(data.get("valuation")),
+                "valuation_range_low": safe_number(data.get("valuationRangeLow")),
+                "valuation_range_high": safe_number(data.get("valuationRangeHigh")),
+                "price_per_sqft": safe_number(data.get("pricePerSqft")),
+                "arv_source": "rentcast"
+            }
+    except Exception as e:
+        print(f"[RentCast ARV Error] {e}")
+    return {}
+    
+def get_rentcast_rent(address):
+    headers = {"X-API-Key": RENTCAST_API_KEY}
+    params = {"address": address}
+    url = "https://api.rentcast.io/v1/properties/rental-estimates"
+
+    try:
+        response = requests.get(url, headers=headers, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                "estimated_rent": safe_number(data.get("rent")),
+                "cap_rate": safe_number(data.get("capRate"))
+            }
+    except Exception as e:
+        print(f"[RentCast Rent Error] {e}")
+    return {}
+    
 tone_map = {
     "angry": ["this is ridiculous", "pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -33,38 +76,6 @@ tone_map = {
     "neutral": []
 }
 
-def get_property_valuation(address):
-    url = f"https://api.rentcast.io/v1/avm/value?address={address}"
-    headers = {"X-Api-Key": RENTCAST_API_KEY, "Accept": "application/json"}
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            return {
-                "estimated_arv": data.get("price"),
-                "valuation_range_low": data.get("priceRangeLow"),
-                "valuation_range_high": data.get("priceRangeHigh"),
-                "price_per_sqft": data.get("pricePerSqft"),
-                "arv_source": "RentCast"
-            }
-    except Exception as e:
-        print(f"[RentCast ARV Error] {e}")
-    return {}
-
-def get_rental_estimate(address):
-    url = f"https://api.rentcast.io/v1/avm/rent/long-term?address={address}"
-    headers = {"X-Api-Key": RENTCAST_API_KEY, "Accept": "application/json"}
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            return {
-                "estimated_rent": data.get("rent"),
-                "cap_rate": data.get("marketCapRate")
-            }
-    except Exception as e:
-        print(f"[RentCast Rent Error] {e}")
-    return {}
 def detect_tone(text):
     lowered = text.lower()
     for tone, keywords in tone_map.items():
@@ -144,23 +155,6 @@ def calculate_offer(arv, repair_cost, roi):
     except:
         return None
 
-def num_tokens_from_messages(messages, model="gpt-4"):
-    encoding = tiktoken.encoding_for_model(model)
-    total = 3
-    for m in messages:
-        total += 3
-        for k, v in m.items():
-            total += len(encoding.encode(v))
-    return total
-
-def summarize_messages(messages):
-    prompt = [
-        {"role": "system", "content": "Summarize key points like motivation, condition, timeline, pricing. Be natural."},
-        {"role": "user", "content": "\n".join(messages)}
-    ]
-    return client.chat.completions.create(
-        model="gpt-4", messages=prompt, temperature=0.5
-    ).choices[0].message.content
 def extract_asking_price(text):
     matches = re.findall(r'\$?\s?(\d{5,7})', text.replace(',', ''))
     try:
@@ -181,6 +175,36 @@ def extract_offer_from_reply(text, asking_price=None):
     except:
         return None
 
+def score_lead(tone, intent):
+    score = 1
+    if tone in ["motivated", "urgent"]:
+        score += 2
+    elif tone in ["curious", "direct"]:
+        score += 1
+    if intent in ["price_sensitive", "distressed"]:
+        score += 2
+    elif intent == "on_fence":
+        score += 1
+    return min(score, 5)
+
+def num_tokens_from_messages(messages, model="gpt-4"):
+    encoding = tiktoken.encoding_for_model(model)
+    total = 3
+    for m in messages:
+        total += 3
+        for k, v in m.items():
+            total += len(encoding.encode(v))
+    return total
+
+def summarize_messages(messages):
+    prompt = [
+        {"role": "system", "content": "Summarize key points like motivation, condition, timeline, pricing. Be natural."},
+        {"role": "user", "content": "\n".join(messages)}
+    ]
+    return client.chat.completions.create(
+        model="gpt-4", messages=prompt, temperature=0.5
+    ).choices[0].message.content
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
@@ -197,13 +221,23 @@ def webhook():
     tone = detect_tone(seller_input)
     intent = detect_seller_intent(seller_input)
 
-    # RentCast ARV + Rent if we have an address and no ARV yet
-    property_address = data.get("property_address") or memory.get("property_address")
-    if property_address and not memory.get("estimated_arv"):
-        valuation_data = get_property_valuation(property_address)
-        rental_data = get_rental_estimate(property_address)
-        memory.update({**valuation_data, **rental_data})
-        memory["property_address"] = property_address  # make sure it's stored
+    # Use RentCast if address available
+    address = data.get("property_address") or memory.get("property_address")
+    if address:
+        valuation_data = get_rentcast_valuation(address)
+        rent_data = get_rentcast_rent(address)
+    else:
+        valuation_data, rent_data = {}, {}
+
+    # Merge new ARV info
+    arv = safe_number(valuation_data.get("estimated_arv") or data.get("estimated_arv") or memory.get("estimated_arv"))
+    repair_cost = data.get("repair_cost") or memory.get("repair_cost")
+    repair_reason = memory.get("repair_reason")
+    if not repair_cost:
+        repair_cost, repair_reason = estimate_repair_cost(memory, tone, seller_input)
+
+    min_offer = calculate_offer(arv, repair_cost, 0.30) if arv and repair_cost else None
+    max_offer = calculate_offer(arv, repair_cost, 0.15) if arv and repair_cost else None
 
     try:
         embed = client.embeddings.create(input=[seller_input], model="text-embedding-3-small").data[0].embedding
@@ -211,16 +245,6 @@ def webhook():
         top_examples = [r.metadata["response"] for r in results.matches]
     except:
         top_examples = []
-
-    # Conservative repair cost if not yet set
-    repair_cost = data.get("repair_cost") or memory.get("repair_cost")
-    repair_reason = memory.get("repair_reason")
-    if not repair_cost:
-        repair_cost, repair_reason = estimate_repair_cost(memory, tone, seller_input)
-
-    arv = memory.get("estimated_arv") or data.get("estimated_arv")
-    min_offer = calculate_offer(arv, repair_cost, 0.30) if arv and repair_cost else None
-    max_offer = calculate_offer(arv, repair_cost, 0.15) if arv and repair_cost else None
 
     summary = summarize_messages([m["content"] for m in conversation_memory["history"] if m["role"] == "user"])
 
@@ -258,15 +282,15 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
         "repair_cost": repair_cost,
         "repair_reason": repair_reason,
         "estimated_arv": arv,
-        "valuation_range_low": memory.get("valuation_range_low"),
-        "valuation_range_high": memory.get("valuation_range_high"),
-        "price_per_sqft": memory.get("price_per_sqft"),
-        "estimated_rent": memory.get("estimated_rent"),
-        "cap_rate": memory.get("cap_rate"),
-        "arv_source": memory.get("arv_source"),
-        "property_address": property_address,
         "tone": tone,
-        "intent": intent
+        "intent": intent,
+        "property_address": address,
+        "price_per_sqft": valuation_data.get("price_per_sqft"),
+        "valuation_range_low": valuation_data.get("valuation_range_low"),
+        "valuation_range_high": valuation_data.get("valuation_range_high"),
+        "estimated_rent": rent_data.get("estimated_rent"),
+        "cap_rate": rent_data.get("cap_rate"),
+        "arv_source": valuation_data.get("arv_source")
     }
 
     print("\n==== Payload to Supabase ====")
@@ -294,11 +318,6 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=False, port=8080, host="0.0.0.0")
-
-
-
-
-
 
 
 
