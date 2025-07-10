@@ -271,7 +271,7 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
     asking_price = extract_asking_price(seller_input)
     verbal_offer = extract_offer_from_reply(reply, asking_price)
 
-   payload = {
+    payload = {
     "phone_number": phone,
     "property_address": address,
     "conversation_log": json.dumps(conversation_memory["history"]),
