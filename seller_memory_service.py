@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from supabase import create_client, Client
 
-# Environment variables (make sure these are in your .env)
+# Load environment variables
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
@@ -22,29 +22,43 @@ def get_seller_memory(phone_number: str):
         if response.data:
             seller = response.data[0]
             return {
+                "phone_number": seller.get("phone_number"),
+                "property_address": seller.get("property_address"),
                 "conversation_log": json.loads(seller.get("conversation_log", "[]")),
+                "call_summary": seller.get("call_summary"),
+                "last_updated": seller.get("last_updated"),
+                "follow_up_reason": seller.get("follow_up_reason"),
+                "follow_up_set_by": seller.get("follow_up_set_by"),
                 "asking_price": seller.get("asking_price"),
                 "estimated_arv": seller.get("estimated_arv"),
                 "repair_cost": seller.get("repair_cost"),
-                "property_address": seller.get("property_address"),
                 "condition_notes": seller.get("condition_notes"),
-                "offer_history": seller.get("offer_history", []),
                 "strategy_flags": seller.get("strategy_flags", []),
-                "tags": seller.get("tags", []),
-                "disposition_status": seller.get("disposition_status"),
-                "follow_up_date": seller.get("follow_up_date"),
-                "follow_up_reason": seller.get("follow_up_reason"),
-                "follow_up_set_by": seller.get("follow_up_set_by"),
-                "call_summary": seller.get("call_summary"),
-                "intent_level": seller.get("intent_level"),
-                "is_deal": seller.get("is_deal"),
-                "last_offer_amount": seller.get("last_offer_amount"),
+                "offer_history": seller.get("offer_history", []),
+                "verbal_offer_amount": seller.get("verbal_offer_amount"),
+                "min_offer_amount": seller.get("min_offer_amount"),
+                "max_offer_amount": seller.get("max_offer_amount"),
                 "bedrooms": seller.get("bedrooms"),
                 "bathrooms": seller.get("bathrooms"),
                 "square_footage": seller.get("square_footage"),
                 "year_built": seller.get("year_built"),
                 "lead_source": seller.get("lead_source"),
-                "summary_history": seller.get("summary_history", [])
+                "is_deal": seller.get("is_deal"),
+                "summary_history": json.loads(seller.get("summary_history", "[]")),
+                "conversation_stage": seller.get("conversation_stage"),
+                "next_follow_up_date": seller.get("next_follow_up_date"),
+                "lead_status": seller.get("lead_status"),
+                "motivation_score": seller.get("motivation_score"),
+                "personality_tag": seller.get("personality_tag"),
+                "timeline_to_sell": seller.get("timeline_to_sell"),
+                "contradiction_flags": seller.get("contradiction_flags", []),
+                "lead_score": seller.get("lead_score"),
+                "valuation_range_low": seller.get("valuation_range_low"),
+                "valuation_range_high": seller.get("valuation_range_high"),
+                "price_per_sqft": seller.get("price_per_sqft"),
+                "estimated_rent": seller.get("estimated_rent"),
+                "cap_rate": seller.get("cap_rate"),
+                "arv_source": seller.get("arv_source")
             }
         return None
     except Exception as e:
@@ -57,28 +71,35 @@ def update_seller_memory(phone_number: str, updates: dict):
     Accepts a dictionary of fields to update.
     """
     try:
-        # Convert conversation_log to JSON string if necessary
+        # Convert to JSON strings where needed
         if "conversation_log" in updates and isinstance(updates["conversation_log"], list):
             updates["conversation_log"] = json.dumps(updates["conversation_log"])
 
-        # Convert summary_history to JSON string if necessary
         if "summary_history" in updates and isinstance(updates["summary_history"], list):
             updates["summary_history"] = json.dumps(updates["summary_history"])
 
-        # Always update the last_updated timestamp
+        if "strategy_flags" in updates and isinstance(updates["strategy_flags"], list):
+            updates["strategy_flags"] = json.dumps(updates["strategy_flags"])
+
+        if "offer_history" in updates and isinstance(updates["offer_history"], list):
+            updates["offer_history"] = json.dumps(updates["offer_history"])
+
+        if "contradiction_flags" in updates and isinstance(updates["contradiction_flags"], list):
+            updates["contradiction_flags"] = json.dumps(updates["contradiction_flags"])
+
+        # Always update last_updated timestamp
         updates["last_updated"] = datetime.utcnow().isoformat()
 
-        # Ensure phone number is included for upsert
+        # Ensure phone number is included
         updates["phone_number"] = phone_number
 
-        # === DEBUG: Log the full payload going into Supabase ===
+        # === DEBUG: Log payload ===
         print("\n📤 Attempting Supabase Upsert...")
         print(json.dumps(updates, indent=2, default=str))
 
-        # Perform upsert with conflict resolution on phone_number
+        # Perform upsert
         response = supabase.table("seller_memory").upsert(updates, on_conflict="phone_number").execute()
 
-        # Log response details
         if response.error:
             print("\n❌ Supabase returned an error:")
             print(response.error)
@@ -91,6 +112,7 @@ def update_seller_memory(phone_number: str, updates: dict):
         print("\n🚨 Exception during Supabase update")
         print(str(e))
         return None
+
 
 
 
