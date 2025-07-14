@@ -3,7 +3,7 @@ import os, re, json, requests
 from openai import OpenAI
 from dotenv import load_dotenv
 from pinecone import Pinecone
-from datetime import datetime, timedelta
+from datetime import datetime
 from seller_memory_service import get_seller_memory, update_seller_memory
 import tiktoken
 
@@ -27,10 +27,8 @@ def safe_number(value):
 def get_rentcast_valuation(address):
     headers = {"X-API-Key": RENTCAST_API_KEY}
     params = {"address": address}
-    url = "https://api.rentcast.io/v1/properties/valuations"
-
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get("https://api.rentcast.io/v1/properties/valuations", headers=headers, params=params)
         if response.status_code == 200:
             data = response.json()
             return {
@@ -43,14 +41,12 @@ def get_rentcast_valuation(address):
     except Exception as e:
         print(f"[RentCast ARV Error] {e}")
     return {}
-    
+
 def get_rentcast_rent(address):
     headers = {"X-API-Key": RENTCAST_API_KEY}
     params = {"address": address}
-    url = "https://api.rentcast.io/v1/properties/rental-estimates"
-
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get("https://api.rentcast.io/v1/properties/rental-estimates", headers=headers, params=params)
         if response.status_code == 200:
             data = response.json()
             return {
@@ -60,7 +56,7 @@ def get_rentcast_rent(address):
     except Exception as e:
         print(f"[RentCast Rent Error] {e}")
     return {}
-    
+
 tone_map = {
     "angry": ["this is ridiculous", "pissed", "you people", "frustrated"],
     "skeptical": ["not sure", "sounds like a scam", "don’t believe"],
@@ -121,28 +117,17 @@ def estimate_repair_cost(memory, tone, text):
         sqft = int(sqft)
     except:
         sqft = 1200
-
-    tone = tone or "neutral"
-    lowered = text.lower()
-    is_vague = any(phrase in lowered for phrase in ["great shape", "just needs paint", "just cosmetic", "a little touching up"])
-    is_detailed = any(phrase in lowered for phrase in ["new roof", "new hvac", "remodeled", "renovated", "fully updated"])
+    is_detailed = any(kw in text.lower() for kw in ["new roof", "new hvac", "renovated", "updated"])
     year_built = memory.get("year_built")
     try:
         is_newer = int(year_built) >= 2000
     except:
         is_newer = False
-
-    if is_detailed and is_newer:
-        base_cost = 20 * sqft
-        reason = "Used light rehab estimate due to detailed upgrades and newer build."
-    else:
-        base_cost = 35 * sqft
-        reason = "Defaulted to medium rehab + buffer due to vague or incomplete details."
-
+    base_cost = 20 * sqft if is_detailed and is_newer else 35 * sqft
+    reason = "Used light rehab estimate due to detailed upgrades and newer build." if is_detailed and is_newer else "Defaulted to medium rehab + buffer due to vague or incomplete details."
     system_flags = detect_system_flags(text)
     system_cost = min(len(system_flags), 2) * 7000
     total_cost = (base_cost + system_cost) * 1.10
-
     return round(total_cost), reason
 
 def calculate_offer(arv, repair_cost, roi):
@@ -162,7 +147,7 @@ def extract_asking_price(text):
     except:
         return None
 
-def extract_offer_from_reply(text, asking_price=None):
+def extract_offer_from_reply(text, asking_price=None, repair_cost=None):
     if not text:
         return None
     cleaned_text = text.replace(',', '')
@@ -171,6 +156,8 @@ def extract_offer_from_reply(text, asking_price=None):
         amounts = [int(m) for m in matches]
         if asking_price:
             amounts = [a for a in amounts if abs(a - asking_price) > 100]
+        if repair_cost:
+            amounts = [a for a in amounts if abs(a - repair_cost) > 100]
         return amounts[0] if amounts else None
     except:
         return None
@@ -221,7 +208,6 @@ def webhook():
     tone = detect_tone(seller_input)
     intent = detect_seller_intent(seller_input)
 
-    # Use RentCast if address available
     address = data.get("property_address") or memory.get("property_address")
     if address:
         valuation_data = get_rentcast_valuation(address)
@@ -229,7 +215,6 @@ def webhook():
     else:
         valuation_data, rent_data = {}, {}
 
-    # Merge new ARV info
     arv = safe_number(valuation_data.get("estimated_arv") or data.get("estimated_arv") or memory.get("estimated_arv"))
     repair_cost = data.get("repair_cost") or memory.get("repair_cost")
     repair_reason = memory.get("repair_reason")
@@ -255,7 +240,6 @@ Seller intent: {intent}
 Use this offer range: Min Offer = ${min_offer}, Max Offer = ${max_offer}
 Based on the seller input, we estimated repair costs to be ${repair_cost}.
 Reason: {repair_reason}
-Explain how you arrived at that estimate clearly during the repair review stage.
 NEPQ context: {"; ".join(top_examples) if top_examples else "No NEPQ examples found."}
 Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
 '''
@@ -269,55 +253,30 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
     conversation_memory["history"].append({"role": "assistant", "content": reply})
 
     asking_price = extract_asking_price(seller_input)
-    verbal_offer = extract_offer_from_reply(reply, asking_price)
+    verbal_offer = extract_offer_from_reply(reply, asking_price, repair_cost)
 
     payload = {
-    "phone_number": phone,
-    "property_address": address,
-    "conversation_log": json.dumps(conversation_memory["history"]),
-    "call_summary": summary,
-    "last_updated": datetime.utcnow().isoformat(),
-
-    "asking_price": safe_number(asking_price or memory.get("asking_price")),
-    "estimated_arv": safe_number(arv),
-    "repair_cost": safe_number(repair_cost),
-    "repair_reason": repair_reason,
-
-    "min_offer_amount": safe_number(min_offer),
-    "max_offer_amount": safe_number(max_offer),
-    "verbal_offer_amount": safe_number(verbal_offer),
-    "last_offer_amount": safe_number(verbal_offer),  # duplicate for protection
-
-    "valuation_range_low": safe_number(valuation_data.get("valuation_range_low")),
-    "valuation_range_high": safe_number(valuation_data.get("valuation_range_high")),
-    "price_per_sqft": safe_number(valuation_data.get("price_per_sqft")),
-    "estimated_rent": safe_number(rent_data.get("estimated_rent")),
-    "cap_rate": safe_number(rent_data.get("cap_rate")),
-    "arv_source": valuation_data.get("arv_source"),
-
-    "condition_notes": memory.get("condition_notes", ""),
-    "square_footage": memory.get("square_footage", 1200),
-    "year_built": memory.get("year_built"),
-    "bedrooms": memory.get("bedrooms"),
-    "bathrooms": memory.get("bathrooms"),
-
-    "strategy_flags": memory.get("strategy_flags", []),
-    "offer_history": memory.get("offer_history", []),
-    "is_deal": memory.get("is_deal", False),
-
-    "summary_history": memory.get("summary_history", []),
-    "conversation_stage": memory.get("conversation_stage"),
-    "lead_status": memory.get("lead_status"),
-    "next_follow_up_date": memory.get("next_follow_up_date"),
-    "follow_up_reason": memory.get("follow_up_reason"),
-    "follow_up_set_by": memory.get("follow_up_set_by"),
-
-    "motivation_score": memory.get("motivation_score"),
-    "personality_tag": memory.get("personality_tag"),
-    "timeline_to_sell": memory.get("timeline_to_sell"),
-    "contradiction_flags": memory.get("contradiction_flags", []),
-    "lead_score": score_lead(tone, intent),
-}
+        "phone_number": phone,
+        "conversation_log": conversation_memory["history"],
+        "call_summary": summary,
+        "verbal_offer_amount": safe_number(verbal_offer),
+        "min_offer_amount": safe_number(min_offer),
+        "max_offer_amount": safe_number(max_offer),
+        "asking_price": safe_number(asking_price or memory.get("asking_price")),
+        "repair_cost": safe_number(repair_cost),
+        "repair_reason": repair_reason,
+        "estimated_arv": safe_number(arv),
+        "tone": tone,
+        "intent": intent,
+        "property_address": address,
+        "price_per_sqft": safe_number(valuation_data.get("price_per_sqft")),
+        "valuation_range_low": safe_number(valuation_data.get("valuation_range_low")),
+        "valuation_range_high": safe_number(valuation_data.get("valuation_range_high")),
+        "estimated_rent": safe_number(rent_data.get("estimated_rent")),
+        "cap_rate": safe_number(rent_data.get("cap_rate")),
+        "arv_source": valuation_data.get("arv_source"),
+        "last_updated": datetime.utcnow().isoformat()
+    }
 
     print("\n==== Payload to Supabase ====")
     print(json.dumps(payload, indent=2, default=str))
