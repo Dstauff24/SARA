@@ -39,47 +39,44 @@ def get_seller_memory(phone_number: str):
 
 def update_seller_memory(phone_number: str, updates: dict):
     """
-    Updates the seller_memory table with filtered fields and debug logs.
+    Updates or inserts seller memory fields in the 'seller_memory' table.
+    Accepts a dictionary of fields to update.
     """
     try:
-        # Serialize list fields
-        if "conversation_log" in updates and isinstance(updates["conversation_log"], list):
-            updates["conversation_log"] = json.dumps(updates["conversation_log"])
-        if "summary_history" in updates and isinstance(updates["summary_history"], list):
-            updates["summary_history"] = json.dumps(updates["summary_history"])
-        if "offer_history" in updates and isinstance(updates["offer_history"], list):
-            updates["offer_history"] = json.dumps(updates["offer_history"])
-        if "strategy_flags" in updates and isinstance(updates["strategy_flags"], list):
-            updates["strategy_flags"] = json.dumps(updates["strategy_flags"])
+        # Convert lists/dicts to JSON strings if necessary
+        for key in ["conversation_log", "summary_history", "offer_history", "strategy_flags", "contradiction_flags"]:
+            if key in updates and isinstance(updates[key], (list, dict)):
+                updates[key] = json.dumps(updates[key])
 
-        # Add metadata
-        updates["phone_number"] = phone_number
+        # Always update the last_updated timestamp
         updates["last_updated"] = datetime.utcnow().isoformat()
 
-        # Only keep allowed fields
-        filtered_updates = {k: v for k, v in updates.items() if k in ALLOWED_FIELDS}
+        # Ensure phone number is included for upsert
+        updates["phone_number"] = phone_number
 
-        print("\n📤 Attempting Supabase Upsert...")
-        print(json.dumps(filtered_updates, indent=2, default=str))
+        # === DEBUG: Print the payload ===
+        print("\n📤 Attempting Supabase Upsert with payload:")
+        print(json.dumps(updates, indent=2, default=str))
 
-        response = supabase.table("seller_memory").upsert(filtered_updates, on_conflict="phone_number").execute()
+        # Perform upsert
+        response = supabase.table("seller_memory").upsert(updates, on_conflict="phone_number").execute()
 
-        if response.error:
-            print("\n❌ Supabase returned an error:")
-            print(f"Message: {response.error.get('message')}")
-            print(f"Code: {response.error.get('code')}")
-            print(f"Details: {response.error.get('details')}")
-            print(f"Hint: {response.error.get('hint')}")
-            print("\n🔎 Tip: This is often caused by sending an unexpected or misspelled field not in your table schema.")
+        # Debug response
+        if hasattr(response, "error") and response.error:
+            print("❌ Supabase Upsert Error:")
+            print(response.error)
+            return False
+        elif hasattr(response, "status_code") and response.status_code >= 400:
+            print(f"❌ Supabase HTTP {response.status_code} Error:")
+            print(response)
+            return False
         else:
             print("✅ Supabase update successful.")
-            print(f"🔁 Response: {response.data}")
-
-        return response
+            return True
     except Exception as e:
-        print("\n🚨 Exception during Supabase update")
+        print("🚨 Exception during Supabase update:")
         print(str(e))
-        return None
+        return False
 
 
 
