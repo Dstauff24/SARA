@@ -257,21 +257,20 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
     asking_price = extract_asking_price(seller_input)
     verbal_offer = extract_offer_from_reply(reply, asking_price, repair_cost)
 
-    payload = {
+      payload = {
         "phone_number": phone,
-        "property_address": address or memory.get("property_address"),
-        "conversation_log": conversation_memory["history"],
+        "property_address": address,
+        "conversation_log": conversation_memory["history"],  # ✅ Already a native list
         "call_summary": summary,
-        "summary_history": memory.get("summary_history", []),
         "last_updated": datetime.utcnow().isoformat(),
-        "conversation_stage": memory.get("conversation_stage"),
-        "next_follow_up_date": memory.get("next_follow_up_date"),
-        "lead_status": memory.get("lead_status"),
         "follow_up_reason": memory.get("follow_up_reason"),
         "follow_up_set_by": memory.get("follow_up_set_by"),
         "asking_price": safe_number(asking_price or memory.get("asking_price")),
         "estimated_arv": safe_number(arv),
         "repair_cost": safe_number(repair_cost),
+        "condition_notes": memory.get("condition_notes"),
+        "strategy_flags": memory.get("strategy_flags") or [],
+        "offer_history": memory.get("offer_history") or [],  # ✅ Make sure this is a list
         "verbal_offer_amount": safe_number(verbal_offer),
         "min_offer_amount": safe_number(min_offer),
         "max_offer_amount": safe_number(max_offer),
@@ -279,23 +278,24 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
         "bathrooms": memory.get("bathrooms"),
         "square_footage": memory.get("square_footage"),
         "year_built": memory.get("year_built"),
+        "lead_source": memory.get("lead_source"),
+        "is_deal": memory.get("is_deal", False),
+        "summary_history": memory.get("summary_history") or [],  # ✅ Make sure this is a list
+        "conversation_stage": memory.get("conversation_stage"),
+        "next_follow_up_date": memory.get("next_follow_up_date"),
+        "lead_status": memory.get("lead_status"),
         "motivation_score": memory.get("motivation_score"),
         "personality_tag": memory.get("personality_tag"),
         "timeline_to_sell": memory.get("timeline_to_sell"),
-        "strategy_flags": memory.get("strategy_flags", []),
-        "offer_history": memory.get("offer_history", []),
-        "contradiction_flags": memory.get("contradiction_flags", []),
+        "contradiction_flags": memory.get("contradiction_flags") or [],
         "lead_score": score_lead(tone, intent),
         "valuation_range_low": safe_number(valuation_data.get("valuation_range_low")),
         "valuation_range_high": safe_number(valuation_data.get("valuation_range_high")),
         "price_per_sqft": safe_number(valuation_data.get("price_per_sqft")),
         "estimated_rent": safe_number(rent_data.get("estimated_rent")),
         "cap_rate": safe_number(rent_data.get("cap_rate")),
-        "arv_source": valuation_data.get("arv_source", "manual" if data.get("estimated_arv") else None),
-        "condition_notes": memory.get("condition_notes"),
-        "lead_source": memory.get("lead_source"),
-        "is_deal": memory.get("is_deal", False),
-    }
+        "arv_source": valuation_data.get("arv_source") or data.get("arv_source") or "manual"
+}
 
     print("\n==== Payload to Supabase ====")
     print(json.dumps(payload, indent=2, default=str))
