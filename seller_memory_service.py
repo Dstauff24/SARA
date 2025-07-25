@@ -43,24 +43,25 @@ def update_seller_memory(phone_number: str, updates: dict):
     Accepts a dictionary of fields to update.
     """
     try:
-        # Ensure list-type fields are properly formatted as lists, not strings
-for key in ["conversation_log", "summary_history", "offer_history", "strategy_flags", "contradiction_flags"]:
-    if key in updates:
-        # If it's a string that looks like JSON, parse it back to list
-        if isinstance(updates[key], str):
-            try:
-                updates[key] = json.loads(updates[key])
-            except json.JSONDecodeError:
-                updates[key] = []
-        # If it's not a list or dict at this point, make it an empty list
-        elif not isinstance(updates[key], (list, dict)):
-            updates[key] = []
+        # Correct format for list-type fields
+        for key in ["conversation_log", "summary_history", "offer_history", "strategy_flags", "contradiction_flags"]:
+            if key in updates:
+                if isinstance(updates[key], str):
+                    try:
+                        updates[key] = json.loads(updates[key])
+                    except json.JSONDecodeError:
+                        updates[key] = []
+                elif not isinstance(updates[key], (list, dict)):
+                    updates[key] = []
 
-        # Always update the last_updated timestamp
+        # Add last_updated timestamp
         updates["last_updated"] = datetime.utcnow().isoformat()
 
-        # Ensure phone number is included for upsert
+        # Ensure phone number is present
         updates["phone_number"] = phone_number
+
+        # Only send allowed fields
+        updates = {k: v for k, v in updates.items() if k in ALLOWED_FIELDS}
 
         # === DEBUG: Print the payload ===
         print("\n📤 Attempting Supabase Upsert with payload:")
@@ -85,6 +86,7 @@ for key in ["conversation_log", "summary_history", "offer_history", "strategy_fl
         print("🚨 Exception during Supabase update:")
         print(str(e))
         return False
+
 
 
 
