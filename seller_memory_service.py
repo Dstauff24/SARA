@@ -43,10 +43,18 @@ def update_seller_memory(phone_number: str, updates: dict):
     Accepts a dictionary of fields to update.
     """
     try:
-        # Convert lists/dicts to JSON strings if necessary
-        for key in ["conversation_log", "summary_history", "offer_history", "strategy_flags", "contradiction_flags"]:
-            if key in updates and isinstance(updates[key], (list, dict)):
-                updates[key] = json.dumps(updates[key])
+        # Ensure list-type fields are properly formatted as lists, not strings
+for key in ["conversation_log", "summary_history", "offer_history", "strategy_flags", "contradiction_flags"]:
+    if key in updates:
+        # If it's a string that looks like JSON, parse it back to list
+        if isinstance(updates[key], str):
+            try:
+                updates[key] = json.loads(updates[key])
+            except json.JSONDecodeError:
+                updates[key] = []
+        # If it's not a list or dict at this point, make it an empty list
+        elif not isinstance(updates[key], (list, dict)):
+            updates[key] = []
 
         # Always update the last_updated timestamp
         updates["last_updated"] = datetime.utcnow().isoformat()
