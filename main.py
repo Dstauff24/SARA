@@ -301,7 +301,14 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
     print(json.dumps(payload, indent=2, default=str))
     print("=============================\n")
 
-    update_seller_memory(phone, payload)
+    update_success = update_seller_memory(phone, payload)
+
+    if not update_success:
+        print("❌ Supabase update failed. Sending 500 response to client.")
+        return jsonify({
+        "error": "Failed to update seller memory in Supabase.",
+        "supabase_payload": payload
+         }), 500
 
     return jsonify({
         "content": reply,
@@ -314,7 +321,7 @@ Avoid ROI %. Emphasize cost logic, risk, and rehab needs.
         "verbal_offer": verbal_offer,
         "repair_cost": repair_cost,
         "repair_reason": repair_reason
-    })
+})
 
 @app.route("/", methods=["GET"])
 def index():
